@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yext Clone - Admin Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background: #e9ecef; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 800px; margin: auto; }
+        h2 { color: #212529; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-top: 30px; }
+        .form-group { margin-bottom: 15px; }
+        input { display: block; width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        .btn-add { background: #28a745; color: white; border: none; padding: 12px 25px; cursor: pointer; border-radius: 6px; width: 100%; font-size: 16px; font-weight: bold; }
+        .business-card { background: #fff; border: 1px solid #dee2e6; padding: 15px; margin-top: 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .business-card:hover { border-color: #007bff; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .badge { background: #e7f3ff; color: #007bff; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 5px; border: 1px solid #b3d7ff; }
+        #editSection { display: none; background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ffeeba; }
+        .stats-bar { display: flex; gap: 20px; margin-bottom: 20px; }
+        .stat-item { padding: 10px 20px; border-radius: 8px; font-weight: bold; }
+        /* Map ki fixed height */
+        #map { height: 400px; width: 100%; border-radius: 12px; margin-bottom: 20px; border: 2px solid #007bff; z-index: 1; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="statsBar" class="stats-bar"></div>
+
+    <div id="map"></div>
+
+    <div id="editSection">
+        <h3>✏️ Edit Business</h3>
+        <input type="hidden" id="editId">
+        <input type="text" id="editName" class="form-group" placeholder="Business Name">
+        <input type="text" id="editAddress" class="form-group" placeholder="Address">
+        <input type="text" id="editCity" class="form-group" placeholder="City">
+        <div style="display: flex; gap: 10px;" class="form-group">
+            <input type="number" id="editLat" step="any" placeholder="Latitude">
+            <input type="number" id="editLng" step="any" placeholder="Longitude">
+        </div>
+        <input type="text" id="editPhone" class="form-group" placeholder="Phone">
+        
+        <div style="margin-bottom: 15px;">
+            <label><strong>Edit Features:</strong></label>
+            <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #fff;">
+                <label style="display: block;"><input type="checkbox" class="edit-feature-opt" value="Free WiFi"> 📶 Free WiFi</label>
+                <label style="display: block;"><input type="checkbox" class="edit-feature-opt" value="Parking"> 🚗 Parking Available</label>
+                <label style="display: block;"><input type="checkbox" class="edit-feature-opt" value="Wheelchair Access"> ♿ Wheelchair Access</label>
+                <label style="display: block;"><input type="checkbox" class="edit-feature-opt" value="Pet Friendly"> 🐾 Pet Friendly</label>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button onclick="updateBusiness()" style="background:#28a745; color:white; border:none; padding:10px; cursor:pointer; border-radius:4px; flex:1;">Save Changes</button>
+            <button onclick="cancelEdit()" style="background:#6c757d; color:white; border:none; padding:10px; cursor:pointer; border-radius:4px; flex:1;">Cancel</button>
+        </div>
+    </div>
+
+    <h2>Create Business Entity</h2>
+    <form id="businessForm">
+        <div class="form-group"><input type="text" id="businessName" placeholder="Business Name" required></div>
+        <div class="form-group"><input type="text" id="address" placeholder="Address" required></div>
+        <div class="form-group"><input type="text" id="city" placeholder="City" required></div>
+        <div style="display: flex; gap: 10px;" class="form-group">
+            <input type="number" id="lat" step="any" placeholder="Latitude (e.g. 19.07)">
+            <input type="number" id="lng" step="any" placeholder="Longitude (e.g. 72.87)">
+        </div>
+        <div class="form-group"><input type="text" id="phone" placeholder="Phone Number" required></div>
+        
+        <div style="margin: 15px 0;">
+            <label><strong>Select Business Features:</strong></label>
+            <div id="featureDropdown" style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; max-height: 120px; overflow-y: auto; background: #fff; margin-top: 5px;">
+                <label style="display: block;"><input type="checkbox" class="feature-opt" value="Free WiFi"> 📶 Free WiFi</label>
+                <label style="display: block;"><input type="checkbox" class="feature-opt" value="Parking"> 🚗 Parking Available</label>
+                <label style="display: block;"><input type="checkbox" class="feature-opt" value="Wheelchair Access"> ♿ Wheelchair Access</label>
+                <label style="display: block;"><input type="checkbox" class="feature-opt" value="Pet Friendly"> 🐾 Pet Friendly</label>
+            </div>
+        </div>
+        <button type="submit" class="btn-add">Add to Network</button>
+    </form>
+
+    <hr style="margin: 30px 0;">
+
+    <div style="margin: 20px 0; display: flex; gap: 10px;">
+        <input type="text" id="searchInput" placeholder="🔍 Search by name or city..." style="flex: 1; padding: 12px; border: 2px solid #007bff; border-radius: 8px;">
+        <button onclick="handleSearch()" style="padding: 0 20px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer;">Search</button>
+    </div>
+
+    <h2>📋 Active Listings</h2>
+    <div id="businessList">Loading...</div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:4000/business';
+    let map;
+    let markers = [];
+
+    // Map initialization
+    function initMap() {
+        if (map) return; // Dubara init na ho
+        map = L.map('map').setView([19.0760, 72.8777], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+    }
+
+    async function fetchBusinesses() {
+        try {
+            const response = await fetch(`${API_URL}/all`);
+            const data = await response.json();
+            renderBusinesses(data);
+        } catch (err) {
+            console.error("Fetch error:", err);
+            document.getElementById('businessList').innerHTML = "Error loading data.";
+        }
+    }
+
+    function renderBusinesses(data) {
+        const listDiv = document.getElementById('businessList');
+        const statsDiv = document.getElementById('statsBar');
+
+        // Clean existing markers
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+
+        // Update Stats
+        const total = data.length;
+        const openCount = data.filter(bus => getStatus(bus.hours).text.includes('Open')).length;
+        statsDiv.innerHTML = `
+            <div class="stat-item" style="background: #e7f3ff; color: #007bff;">Total: ${total}</div>
+            <div class="stat-item" style="background: #e6ffed; color: #28a745;">Open Now: ${openCount}</div>
+        `;
+
+        if (total === 0) {
+            listDiv.innerHTML = "<p>No listings found.</p>";
+            return;
+        }
+
+        listDiv.innerHTML = "";
+        const bounds = [];
+
+        data.forEach(bus => {
+            const status = getStatus(bus.hours);
+            
+            // Lat/Lng Handling
+            const bLat = parseFloat(bus.lat) || 19.076 + (Math.random() - 0.5) * 0.1;
+            const bLng = parseFloat(bus.lng) || 72.877 + (Math.random() - 0.5) * 0.1;
+
+            // Add Marker
+            const marker = L.marker([bLat, bLng]).addTo(map)
+                .bindPopup(`<b>${bus.businessName}</b><br>${bus.city}`);
+            markers.push(marker);
+            bounds.push([bLat, bLng]);
+
+            // Attributes
+            let attrHtml = '';
+            if (bus.additionalAttributes) {
+                Object.keys(bus.additionalAttributes).forEach(key => {
+                    if (bus.additionalAttributes[key]) attrHtml += `<span class="badge">✨ ${key}</span>`;
+                });
+            }
+
+            let hoursHtml = bus.hours && bus.hours.length > 0 
+                ? bus.hours.map(h => `<small>${h.dayOfWeek.slice(0,3)}: ${h.openTime.slice(0,5)}</small>`).join(' | ')
+                : 'No hours set';
+
+            // Card HTML
+            listDiv.innerHTML += `
+                <div class="business-card" onclick="map.setView([${bLat}, ${bLng}], 16); marker.openPopup();">
+                    <div class="info">
+                        <span style="float:right; background:${status.color}; color:white; padding:2px 8px; border-radius:12px; font-size:10px;">${status.text}</span>
+                        <strong>${bus.businessName}</strong> <br>
+                        <small>📍 ${bus.address}, ${bus.city}</small> <br>
+                        <div style="margin: 8px 0;">${attrHtml}</div>
+                        <div style="background:#f8f9fa; padding:5px; border-radius:4px; font-size:12px;">🕒 ${hoursHtml}</div>
+                    </div>
+                    <div class="actions" style="margin-top:10px; display:flex; gap:5px;">
+                        <button class="btn-edit" onclick='event.stopPropagation(); startEdit(${JSON.stringify(bus).replace(/'/g, "&apos;")})'>Edit</button>
+                        <button class="btn-delete" onclick="event.stopPropagation(); deleteBusiness(${bus.id})">Delete</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (bounds.length > 0) map.fitBounds(bounds);
+    }
+
+    function getStatus(hours) {
+        if (!hours || hours.length === 0) return { text: 'No Hours', color: '#666' };
+        const now = new Date();
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const todayData = hours.find(h => h.dayOfWeek === days[now.getDay()]);
+        if (!todayData) return { text: 'Closed Today', color: '#dc3545' };
+        const current = now.getHours() * 60 + now.getMinutes();
+        const [oh, om] = todayData.openTime.split(':').map(Number);
+        const [ch, cm] = todayData.closeTime.split(':').map(Number);
+        return (current >= (oh*60+om) && current <= (ch*60+cm)) ? { text: 'Open Now ✅', color: '#28a745' } : { text: 'Closed ❌', color: '#dc3545' };
+    }
+
+    async function handleSearch() {
+        const term = document.getElementById('searchInput').value;
+        const res = await fetch(`${API_URL}/all?city=${term}`);
+        const data = await res.json();
+        renderBusinesses(data);
+    }
+
+    document.getElementById('businessForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const selectedFeatures = {};
+        document.querySelectorAll('.feature-opt:checked').forEach(cb => { selectedFeatures[cb.value] = true; });
+
+        const body = {
+            businessName: document.getElementById('businessName').value,
+            address: document.getElementById('address').value,
+            city: document.getElementById('city').value,
+            lat: parseFloat(document.getElementById('lat').value) || 0,
+            lng: parseFloat(document.getElementById('lng').value) || 0,
+            phone: document.getElementById('phone').value,
+            additionalAttributes: selectedFeatures,
+            hours: [
+                { dayOfWeek: "Monday", openTime: "09:00", closeTime: "18:00" },
+                { dayOfWeek: "Tuesday", openTime: "09:00", closeTime: "18:00" }
+            ]
+        };
+
+        const res = await fetch(`${API_URL}/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        if (res.ok) { e.target.reset(); fetchBusinesses(); }
+    };
+
+    async function deleteBusiness(id) {
+        if (confirm('Delete?')) {
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            fetchBusinesses();
+        }
+    }
+
+    function startEdit(bus) {
+        document.getElementById('editSection').style.display = 'block';
+        document.getElementById('editId').value = bus.id;
+        document.getElementById('editName').value = bus.businessName;
+        document.getElementById('editAddress').value = bus.address;
+        document.getElementById('editCity').value = bus.city;
+        document.getElementById('editLat').value = bus.lat || '';
+        document.getElementById('editLng').value = bus.lng || '';
+        document.getElementById('editPhone').value = bus.phone;
+        
+        document.querySelectorAll('.edit-feature-opt').forEach(cb => {
+            cb.checked = bus.additionalAttributes && bus.additionalAttributes[cb.value];
+        });
+        window.scrollTo(0,0);
+    }
+
+    async function updateBusiness() {
+        const id = document.getElementById('editId').value;
+        const selectedFeatures = {};
+        document.querySelectorAll('.edit-feature-opt:checked').forEach(cb => { selectedFeatures[cb.value] = true; });
+
+        const body = {
+            businessName: document.getElementById('editName').value,
+            address: document.getElementById('editAddress').value,
+            city: document.getElementById('editCity').value,
+            lat: parseFloat(document.getElementById('editLat').value),
+            lng: parseFloat(document.getElementById('editLng').value),
+            phone: document.getElementById('editPhone').value,
+            additionalAttributes: selectedFeatures
+        };
+        
+        await fetch(`${API_URL}/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        cancelEdit();
+        fetchBusinesses();
+    }
+
+    function cancelEdit() { document.getElementById('editSection').style.display = 'none'; }
+
+    // On Load
+    initMap();
+    fetchBusinesses();
+</script>
+</body>
+</html>
