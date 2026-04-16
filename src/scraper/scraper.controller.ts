@@ -19,9 +19,19 @@ export class ScraperController {
   //   return this.scraperService.scrapeGoogleMaps(queryDto.query);
   // }
 
+  // @Post()
+  // @UsePipes(new ValidationPipe({ transform: true }))
+  // async getLocations(@Body() queryDto: ScrapeRequestDto) {
+  //   return this.scraperService.scrapeAllPlatforms(queryDto.query);
+  // }
+
   @Post()
   @UsePipes(new ValidationPipe({ transform: true }))
-  async getLocations(@Body() queryDto: ScrapeRequestDto) {
-    return this.scraperService.scrapeGoogleMaps(queryDto.query);
+  async getLocations(@Body() scrapeDto: ScrapeRequestDto) {
+    // Ab hum dono parameters pass karenge
+    return this.scraperService.scrapeAllPlatforms(
+      scrapeDto.name,
+      scrapeDto.location,
+    );
   }
 }

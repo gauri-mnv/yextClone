@@ -26,10 +26,7 @@ export class BusinessService {
   async findAll(search?: string) {
     return await this.locationRepo.find({
       where: search
-        ? [
-            { address: ILike(`%${search}%`) }, // Ya toh city match ho
-            { name: ILike(`%${search}%`) }, // Ya business ka naam match ho
-          ]
+        ? [{ address: ILike(`%${search}%`) }, { name: ILike(`%${search}%`) }]
         : {},
     });
   }

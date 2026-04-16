@@ -49,7 +49,7 @@ export class CreateBusinessDto {
   hours?: BusinessHourDto[];
 }
 
-// Update ke liye hum Partial Type use karte hain (taaki saari fields optional ho jayein)
+// Update Business
 export class UpdateBusinessDto {
   @IsOptional() @IsString() businessName?: string;
   @IsOptional() @IsString() address?: string;
