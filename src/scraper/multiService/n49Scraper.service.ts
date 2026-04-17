@@ -42,7 +42,6 @@ export class N49ScraperService {
       const searchLocation = encodeURIComponent(cityOrZip);
       // const searchUrl = `https://www.n49.com/search/${searchLocation}/${searchQuery}/`;
       const searchUrl = `https://www.n49.com/search/${searchQuery}/42041/${searchLocation}/`;
-      // https://www.n49.com/biz/4183809/airdrie-choice-dental/
 
       console.log(`🔗 [N49] Navigating to Search: ${searchUrl}`);
       // await page.goto(searchUrl, {
@@ -67,23 +66,23 @@ export class N49ScraperService {
         );
       }
       // FIX 4: Check karein agar Cloudflare ya block page toh nahi aa raha
-      const html = await page.content();
-      // console.log('📄 [N49 DEBUG HTML]:', html);
+      // const html = await page.content();
+      // // console.log('📄 [N49 DEBUG HTML]:', html);
 
-      if (html.includes('Access denied') || html.includes('Cloudflare')) {
-        console.log('❌ [N49] Blocked by Cloudflare/Bot Protection');
-        return [];
-      }
+      // if (html.includes('Access denied') || html.includes('Cloudflare')) {
+      //   console.log('❌ [N49] Blocked by Cloudflare/Bot Protection');
+      //   return [];
+      // }
 
       // 🕵️ DEBUG: Console mein sirf results wala part print karke dekho
-      const resultsContainer = await page.evaluate(() => {
-        return (
-          document.querySelector(
-            '.suggestion-search, .search-suggestions, #search-results',
-          )?.innerHTML || 'NOT FOUND'
-        );
-      });
-      console.log('🔍 [DEBUG] Results Section HTML:', resultsContainer);
+      // const resultsContainer = await page.evaluate(() => {
+      //   return (
+      //     document.querySelector(
+      //       '.suggestion-search, .search-suggestions, #search-results',
+      //     )?.innerHTML || 'NOT FOUND'
+      //   );
+      // });
+      // console.log('🔍 [DEBUG] Results Section HTML:', resultsContainer);
 
       // 1. Extracting Listing Links from Search Results
       const links = await page.evaluate(() => {
@@ -111,7 +110,7 @@ export class N49ScraperService {
           console.log(`🌐 [BROWSER LOG]: ${msg.text()}`);
         });
         try {
-          console.log(`\n--- 🕵️ [N49] Deep Searching: ${link} ---`);
+          // console.log(`\n--- 🕵️ [N49] Deep Searching: ${link} ---`);
 
           await newPage.goto(link, {
             waitUntil: 'load',
@@ -145,11 +144,11 @@ export class N49ScraperService {
           console.log(`New page evaluated:${newPage.url()}`);
 
           // 🔥 PUSH SE PEHLE CONSOLE LOG
-          console.log(`📊 [N49] Extracted:`);
-          console.log(`   Name:  ${extractedData.name}`);
-          console.log(`   Phone: ${extractedData.phone}`);
-          console.log(`   address: ${extractedData.address}`);
-          console.log(`   link: ${newPage.url()}`);
+          // console.log(`📊 [N49] Extracted:`);
+          // console.log(`   Name:  ${extractedData.name}`);
+          // console.log(`   Phone: ${extractedData.phone}`);
+          // console.log(`   address: ${extractedData.address}`);
+          // console.log(`   link: ${newPage.url()}`);
 
           finalResults.push({
             name: extractedData.name !== '' ? extractedData.name : '-',
@@ -160,7 +159,7 @@ export class N49ScraperService {
             timestamp: new Date().toISOString(),
           });
 
-          console.log(`✅ [N49] Added to final results:`, finalResults);
+          // console.log(`✅ [N49] Added to final results:`, finalResults);
           return finalResults;
         } catch (e) {
           console.log(`❌ [N49] Error scraping deep link: ${link}`, e);

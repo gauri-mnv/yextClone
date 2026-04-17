@@ -45,7 +45,13 @@ export class GoogleMapsScraperService {
         await browser.close();
         return [];
       }
+      // const html = await page.content();
+      // console.log('📄 [N49 DEBUG HTML]:', html);
 
+      // if (html.includes('Access denied') || html.includes('Cloudflare')) {
+      //   console.log('❌ [N49] Blocked by Cloudflare/Bot Protection');
+      //   return [];
+      // }
       const scrapedData = await page.evaluate(() => {
         console.log('Scraping done');
         console.log('document', document);

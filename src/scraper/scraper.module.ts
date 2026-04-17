@@ -8,6 +8,7 @@ import { YelpScraperService } from './multiService/yelpScaper.service';
 import { BingScraperService } from './multiService/bingScraper.service';
 import { InstagramScraperService } from './multiService/instagramScraper.service';
 import { N49ScraperService } from './multiService/n49Scraper.service';
+import { MapQuestScraperService } from './multiService/mapquestScraper.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Location])],
@@ -19,6 +20,7 @@ import { N49ScraperService } from './multiService/n49Scraper.service';
     BingScraperService,
     InstagramScraperService,
     N49ScraperService,
+    MapQuestScraperService,
   ],
 })
 export class ScraperModule {}
