@@ -159,6 +159,8 @@ export class N49ScraperService {
             source: 'N49',
             timestamp: new Date().toISOString(),
           });
+
+          console.log(`✅ [N49] Added to final results:`, finalResults);
           return finalResults;
         } catch (e) {
           console.log(`❌ [N49] Error scraping deep link: ${link}`, e);

@@ -29,6 +29,30 @@ export class ScraperService {
     await this.locationRepo.clear();
     console.log(`🚀 Starting Multi-Platform Scraping for: ${name}`);
 
+    const [googleData, yelpData, bingData, instagramData, N49ScraperData] =
+      await Promise.all([
+        this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
+        this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
+        this.bingService.scrapeBing(name, location),
+        this.instagramService.scrapeInstagram(name, location),
+        this.n49Service.scrapeN49(name, location),
+      ]);
+    const combinedData = [
+      ...googleData,
+      ...yelpData,
+      ...bingData,
+      ...instagramData,
+      ...N49ScraperData, // const [googleData, yelpData, bingData, instagramData, N49ScraperData] =
+      //   await Promise.all([
+      //     this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
+      //     this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
+      //     this.bingService.scrapeBing(name, location),
+      //     this.instagramService.scrapeInstagram(name, location),
+      //     this.n49Service.scrapeN49(name, location),
+      //   ]);
+      // const combinedData = [...N49ScraperData];
+    ];
+
     // const [googleData, yelpData, bingData, instagramData, N49ScraperData] =
     //   await Promise.all([
     //     this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
@@ -37,29 +61,14 @@ export class ScraperService {
     //     this.instagramService.scrapeInstagram(name, location),
     //     this.n49Service.scrapeN49(name, location),
     //   ]);
-    // const combinedData = [
-    //   // ...googleData,
-    //   // ...yelpData,
-    //   // ...bingData,
-    //   // ...instagramData,
-    //   ...N49ScraperData,
-    // ];
+    // const combinedData = [...N49ScraperData];
 
-    const [N49ScraperData] = await Promise.all([
-      this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
-      this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
-      this.bingService.scrapeBing(name, location),
-      this.instagramService.scrapeInstagram(name, location),
-      this.n49Service.scrapeN49(name, location),
-    ]);
-    const combinedData = [...N49ScraperData];
-
-    // console.log(
-    //   `📊 Total Results Found: ${combinedData.length} (Google: ${googleData.length}, Yelp: ${yelpData.length},Bing: ${bingData.length}, Instagram : ${instagramData.length} , N49Scraper:${N49ScraperData.length})`,
-    // );
     console.log(
-      `📊 Total Results Found: ${combinedData.length} (N49Scraper:${N49ScraperData.length})`,
+      `📊 Total Results Found: ${combinedData.length} (Google: ${googleData.length}, Yelp: ${yelpData.length},Bing: ${bingData.length}, Instagram : ${instagramData.length} , N49Scraper:${N49ScraperData.length})`,
     );
+    // console.log(
+    //   `📊 Total Results Found: ${combinedData.length} (N49Scraper:${N49ScraperData.length})`,
+    // );
 
     return combinedData;
   }
