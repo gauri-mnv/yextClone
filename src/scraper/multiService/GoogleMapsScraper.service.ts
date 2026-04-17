@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { LocationResponseDto } from './dto/location-response.dto';
+import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
 import { Repository } from 'typeorm';
-import { Location } from './location.entity';
+import { Location } from '../location.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()

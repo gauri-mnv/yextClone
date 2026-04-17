@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { LocationResponseDto } from './dto/location-response.dto';
+import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-import { Location } from './location.entity';
+import { Location } from '../location.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -25,7 +25,7 @@ export class BingScraperService {
       // Bing search query for specific business and location
       const searchQuery = encodeURIComponent(`${name} ${location}`);
       const searchUrl = `https://www.bing.com/search?q=${searchQuery}`;
-      console.log(`🔗 Navigating to Bing: ${searchUrl}`);
+      // console.log(`🔗 Navigating to Bing: ${searchUrl}`);
 
       await page.goto(searchUrl, { waitUntil: 'load', timeout: 30000 });
       try {
@@ -73,7 +73,7 @@ export class BingScraperService {
           .filter((i) => i !== null);
       });
 
-      console.log(`✅ Bing found ${results.length} items`);
+      // console.log(`✅ Bing found ${results.length} items`);
 
       return results.map((item) => ({
         ...item,
@@ -100,7 +100,7 @@ export class BingScraperService {
         itemName.includes(key),
       ).length;
       if (matchCount < Math.ceil(searchKeywords.length / 2)) {
-        console.log(`🚫 Filtering out unrelated result: ${item.name}`);
+        // console.log(`🚫 Filtering out unrelated result: ${item.name}`);
         continue;
       }
       const existing = await this.locationRepo.findOne({

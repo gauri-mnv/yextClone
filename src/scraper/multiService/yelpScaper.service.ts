@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { LocationResponseDto } from './dto/location-response.dto';
+import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
 import { Repository } from 'typeorm';
-import { Location } from './location.entity';
+import { Location } from '../location.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
@@ -19,16 +19,16 @@ export class YelpScraperService {
     console.log('--- 🚀 YELP SCRAPER STARTED ---');
     const browser = await chromium.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage', // Memory issues se bachne ke liye
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process', // Resources bachata hai
-        '--disable-gpu',
-      ],
+      // args: [
+      //   '--no-sandbox',
+      //   '--disable-setuid-sandbox',
+      //   '--disable-dev-shm-usage',
+      //   '--disable-accelerated-2d-canvas',
+      //   '--no-first-run',
+      //   '--no-zygote',
+      //   '--single-process', // Resources bachata hai
+      //   '--disable-gpu',
+      // ],
     });
     // const context = await browser.newContext({});
     // const context = await browser.newContext({
@@ -45,7 +45,7 @@ export class YelpScraperService {
       viewport: { width: 1280, height: 720 },
       extraHTTPHeaders: {
         'Accept-Language': 'en-US,en;q=0.9',
-        Referer: 'https://www.google.com/', // Realistic dikhne ke liye
+        // Referer: 'https://www.google.com/',
       },
       deviceScaleFactor: 1,
       hasTouch: false,
@@ -67,9 +67,9 @@ export class YelpScraperService {
 
       const hasCaptcha = await page.isVisible('iframe[title*="reCAPTCHA"]');
       if (hasCaptcha) {
-        console.log(
-          '🚨 CAPTCHA DETECTED! Please solve it in the browser window.',
-        );
+        // console.log(
+        //   '🚨 CAPTCHA DETECTED! Please solve it in the browser window.',
+        // );
         await page.waitForTimeout(15000);
       }
       await page.screenshot({ path: 'yelp-debug.png' });
@@ -94,9 +94,9 @@ export class YelpScraperService {
         });
         return [...new Set(links)];
       });
-      console.log(
-        `🔗 Found ${businessLinks.length} unique business links. Fetching details...`,
-      );
+      // console.log(
+      //   `🔗 Found ${businessLinks.length} unique business links. Fetching details...`,
+      // );
       const finalResults: LocationResponseDto[] = [];
 
       for (const link of businessLinks.slice(0, 5)) {
@@ -131,8 +131,8 @@ export class YelpScraperService {
             timestamp: new Date().toISOString(),
           });
         } catch (e) {
-          console.log(`Failed to fetch details for ${link}`);
-          console.error('❌ Yelp Error:', e);
+          console.log(`Failed to fetch details for ${link}`, e);
+          // console.error('❌ Yelp Error:', e);
           return [];
         }
       }
@@ -140,7 +140,7 @@ export class YelpScraperService {
       return finalResults;
     } finally {
       await browser.close();
-      console.log('--- 🏁 YELP SCRAPER FINISHED ---');
+      // console.log('--- 🏁 YELP SCRAPER FINISHED ---');
     }
   }
   async saveResults(results: LocationResponseDto[]) {
@@ -154,7 +154,7 @@ export class YelpScraperService {
         const newLocation = this.locationRepo.create(item);
         await this.locationRepo.save(newLocation);
       } else {
-        console.log(`⏭️ Skipping duplicate: ${item.name}`);
+        // console.log(`⏭️ Skipping duplicate: ${item.name}`);
         await this.locationRepo.update(existing.id, item);
       }
     }
