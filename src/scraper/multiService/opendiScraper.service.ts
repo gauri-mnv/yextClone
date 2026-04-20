@@ -1,0 +1,184 @@
+import { Injectable } from '@nestjs/common';
+import { LocationResponseDto } from '../dto/location-response.dto';
+import { chromium } from 'playwright';
+import { Location } from '../location.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { getPincodeFromAddress } from '../utils/location-helper';
+
+@Injectable()
+export class OpendiScraperService {
+  constructor(
+    @InjectRepository(Location)
+    private locationRepo: Repository<Location>,
+  ) {}
+
+  async scrapeOpendi(
+    name: string,
+    location: string,
+  ): Promise<LocationResponseDto[]> {
+    // console.log(`\n🏢 [Opendi] Starting Scrape for: ${name} in ${location}`);
+
+    const browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    const context = await browser.newContext({
+      userAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    });
+
+    const page = await context.newPage();
+
+    try {
+      // Opendi Search URL Pattern: opendi.ca/s/[BusinessName]/[Location]
+      const searchQuery = encodeURIComponent(name);
+      //   const searchLocation = encodeURIComponent(location);
+      const pincode = await getPincodeFromAddress(page, location);
+      // console.log(
+      //   `📍 [Opendi] Original Loc: ${location} -> Refined Loc: ${pincode}`,
+      // );
+      const searchLocation = encodeURIComponent(pincode);
+      const searchUrl = `https://www.opendi.ca/search?what=${searchQuery}&where=${searchLocation}`;
+      //   https://www.opendi.ca/search?what=Airdrie+Choice+Dental&where=403&searchtype=industry&submit=Search
+
+      // console.log(`🔗 [Opendi] Navigating to: ${searchUrl}`);
+
+      await page.goto(searchUrl, {
+        waitUntil: 'domcontentloaded',
+        timeout: 30000,
+      });
+
+      // 1. Extracting Links from search results
+      const links = await page.evaluate(() => {
+        // Opendi usually lists businesses with <a> tags containing the business name
+        // We look for links that lead to a specific business profile
+        const selectors = [
+          'a.details', // Screenshot wala Details button
+          'a[href*="/details/"]', // Alternative details path
+          '.search-result h3 a', // Business title link
+          'a[href^="https://www.opendi.ca/"]', // Kisi bhi valid link ke liye
+        ];
+
+        const found: string[] = [];
+
+        selectors.forEach((sel) => {
+          const elements = Array.from(document.querySelectorAll(sel));
+          elements.forEach((el) => {
+            const href = (el as HTMLAnchorElement).href;
+            // Filter: Sirf wo links jo search/auth pages nahi hain
+            if (
+              href &&
+              !href.includes('/search?') &&
+              !href.includes('create-a-listing')
+            ) {
+              found.push(href);
+            }
+          });
+        });
+
+        return [...new Set(found)].slice(0, 5);
+      });
+
+      // console.log(`✅ [Opendi] Found ${links.length} potential links.`);
+
+      const finalResults: LocationResponseDto[] = [];
+
+      // 2. Deep Dive Loop
+      for (const link of links) {
+        const newPage = await context.newPage();
+        try {
+          // console.log(`\n--- 🕵️ [Opendi] Deep Searching: ${link} ---`);
+          await newPage.goto(link, {
+            waitUntil: 'domcontentloaded',
+            timeout: 20000,
+          });
+
+          const extractedData = await newPage.evaluate((currentLink) => {
+            // Opendi specific selectors
+            const bizName =
+              document.querySelector('.name h2, h1')?.textContent || '-';
+            const getDDByDT = (term: string) => {
+              const dt = Array.from(document.querySelectorAll('dt')).find(
+                (el) =>
+                  el.textContent
+                    ?.trim()
+                    .toLowerCase()
+                    .includes(term.toLowerCase()),
+              );
+              return dt ? dt.nextElementSibling?.textContent?.trim() : null;
+            };
+
+            const address = getDDByDT('Address') || '-';
+            const place = getDDByDT('Place') || ''; // City/Postal code area
+            const phone = getDDByDT('Landline') || getDDByDT('Phone') || '-';
+            const website =
+              document
+                .querySelector('dd a[href^="http"]')
+                ?.getAttribute('href') || '-';
+
+            return {
+              name: bizName.trim(),
+              phone: phone.trim(),
+              address: `${address} ${place}`.trim().replace(/\s+/g, ' '),
+              locationLink: website ? website : currentLink,
+            };
+          }, link); // Passing link to avoid ReferenceError
+
+          // console.log(
+          //   `📊 [Opendi] Extracted: Name: ${extractedData.name} | Phone: ${extractedData.phone}`,
+          // );
+
+          finalResults.push({
+            name: extractedData.name,
+            address: extractedData.address,
+            phone: extractedData.phone,
+            locationLink: link,
+            source: 'Opendi',
+            timestamp: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.log(`❌ [Opendi] Error deep searching: ${link}`, e);
+        } finally {
+          await newPage.close();
+        }
+      }
+
+      if (finalResults.length > 0) {
+        await this.saveResults(finalResults, name);
+      }
+
+      return finalResults;
+    } catch (error) {
+      console.error('❌ [Opendi] Global Scraper Error:', error);
+      return [];
+    } finally {
+      await browser.close();
+      // console.log('--- 🏁 OPENDI SCRAPER FINISHED ---');
+    }
+  }
+
+  async saveResults(results: LocationResponseDto[], targetName: string) {
+    const searchKeywords = targetName.toLowerCase().split(' ');
+    for (const item of results) {
+      if (!item.name || item.name === '-') continue;
+
+      const itemName = item.name.toLowerCase();
+      const matchCount = searchKeywords.filter((key) =>
+        itemName.includes(key),
+      ).length;
+
+      // 50% Match Logic
+      if (matchCount < Math.ceil(searchKeywords.length / 2)) continue;
+
+      const existing = await this.locationRepo.findOne({
+        where: { locationLink: item.locationLink },
+      });
+      if (!existing) {
+        await this.locationRepo.save(this.locationRepo.create(item));
+        // console.log(`💾 [Opendi] Saved: ${item.name}`);
+      }
+    }
+  }
+}

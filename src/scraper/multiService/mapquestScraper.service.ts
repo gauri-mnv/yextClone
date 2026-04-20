@@ -13,7 +13,7 @@ export class MapQuestScraperService {
   ) {}
 
   async scrapeMapQuest(query: string): Promise<LocationResponseDto[]> {
-    console.log(`\n🗺️ [MapQuest] Starting Scrape for: ${query} `);
+    //console.log(`\n🗺️ [MapQuest] Starting Scrape for: ${query} `);
 
     const browser = await chromium.launch({
       headless: true,
@@ -37,7 +37,7 @@ export class MapQuestScraperService {
       // const searchUrl = `https://www.mapquest.com/search/results?query=${searchQuery}&location=${searchLocation}`;
       const searchUrl = `https://www.mapquest.com/search/${searchQuery}`;
 
-      console.log(`🔗 [MapQuest] Navigating to: ${searchUrl}`);
+      //console.log(`🔗 [MapQuest] Navigating to: ${searchUrl}`);
 
       await page.goto(searchUrl, {
         // waitUntil: 'networkidle', // Zaruri hai kyunki MapQuest maps aur pins load karta hai
@@ -101,7 +101,7 @@ export class MapQuestScraperService {
           .slice(0, 6);
       });
 
-      console.log(`✅ [MapQuest] Found ${links.length} potential links.`);
+      //console.log(`✅ [MapQuest] Found ${links.length} potential links.`);
 
       const finalResults: LocationResponseDto[] = [];
 
@@ -109,7 +109,7 @@ export class MapQuestScraperService {
       for (const link of links) {
         const newPage = await context.newPage();
         try {
-          console.log(`\n--- 🕵️ [MapQuest] Deep Searching: ${link} ---`);
+          // console.log(`\n--- 🕵️ [MapQuest] Deep Searching: ${link} ---`);
           await newPage.goto(link, {
             waitUntil: 'domcontentloaded',
             timeout: 25000,
@@ -158,11 +158,11 @@ export class MapQuestScraperService {
           }, link);
 
           // 🔥 PUSH SE PEHLE CONSOLE LOG (VS Code terminal mein dikhega)
-          console.log(`📊 [MapQuest] Extracted Data:`);
-          console.log(`   Name:    ${extractedData.name}`);
-          console.log(`   Phone:   ${extractedData.phone}`);
-          console.log(`   Address: ${extractedData.address}`);
-          console.log(`   link: ${extractedData.link}`);
+          // console.log(`📊 [MapQuest] Extracted Data:`);
+          // console.log(`   Name:    ${extractedData.name}`);
+          // console.log(`   Phone:   ${extractedData.phone}`);
+          // console.log(`   Address: ${extractedData.address}`);
+          // console.log(`   link: ${extractedData.link}`);
 
           finalResults.push({
             name: extractedData.name,
@@ -189,7 +189,7 @@ export class MapQuestScraperService {
       return [];
     } finally {
       await browser.close();
-      console.log('--- 🏁 MAPQUEST SCRAPER FINISHED ---');
+      //console.log('--- 🏁 MAPQUEST SCRAPER FINISHED ---');
     }
   }
 
@@ -211,7 +211,7 @@ export class MapQuestScraperService {
       });
       if (!existing) {
         await this.locationRepo.save(this.locationRepo.create(item));
-        console.log(`💾 [MapQuest] Saved: ${item.name}`);
+        //console.log(`💾 [MapQuest] Saved: ${item.name}`);
       }
     }
   }

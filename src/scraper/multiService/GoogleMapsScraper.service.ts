@@ -19,7 +19,7 @@ export class GoogleMapsScraperService {
     try {
       const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
 
-      console.log(`Searching: ${searchUrl}`);
+      // console.log(`Searching: ${searchUrl}`);
 
       await page.goto(searchUrl, {
         waitUntil: 'domcontentloaded',
@@ -53,8 +53,8 @@ export class GoogleMapsScraperService {
       //   return [];
       // }
       const scrapedData = await page.evaluate(() => {
-        console.log('Scraping done');
-        console.log('document', document);
+        // console.log('Scraping done');
+        //console.log('document', document);
         // 1. Check karein agar direct Place Card khula hai (Exact match)
         const exactName = document.querySelector('h1.DUwDvf')?.textContent;
         if (exactName) {
@@ -81,8 +81,8 @@ export class GoogleMapsScraperService {
           document.querySelectorAll('div[role="article"]'),
         );
 
-        console.log('Scraping done for array');
-        console.log('document', items);
+        //console.log('Scraping done for array');
+        //console.log('document', items);
         return items.map((item) => ({
           name: item.querySelector('.qBF1Pd')?.textContent || 'N/A',
           address:
@@ -120,7 +120,7 @@ export class GoogleMapsScraperService {
         }
       }
       await browser.close();
-      console.log(`Successfully scraped ${finalResults.length} items`);
+      //console.log(`Successfully scraped ${finalResults.length} items`);
       return finalResults;
     } catch (error) {
       console.error('Scraping Error:', error);
@@ -144,7 +144,7 @@ export class GoogleMapsScraperService {
         await this.locationRepo.save(newLocation);
       } else {
         // 3. (Optional) Agar hai, toh sirf data update kar sakte hain
-        console.log(`⏭️ Skipping duplicate: ${item.name}`);
+        //console.log(`⏭️ Skipping duplicate: ${item.name}`);
         await this.locationRepo.update(existing.id, item);
       }
     }

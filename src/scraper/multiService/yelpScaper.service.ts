@@ -16,7 +16,7 @@ export class YelpScraperService {
     businessName: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    console.log('--- 🚀 YELP SCRAPER STARTED ---');
+    //console.log('--- 🚀 YELP SCRAPER STARTED ---');
     const browser = await chromium.launch({
       headless: true,
       // args: [
@@ -57,7 +57,7 @@ export class YelpScraperService {
 
     try {
       const searchUrl = `https://www.yelp.com/search?find_desc=${encodeURIComponent(businessName)}&find_loc=${encodeURIComponent(location)}`;
-      console.log(`🔗 Navigating to: ${searchUrl}`);
+      //console.log(`🔗 Navigating to: ${searchUrl}`);
 
       // await page.goto(searchUrl, { waitUntil: 'networkidle' });
 
@@ -73,7 +73,7 @@ export class YelpScraperService {
         await page.waitForTimeout(15000);
       }
       await page.screenshot({ path: 'yelp-debug.png' });
-      console.log('📸 Screenshot saved as yelp-debug.png');
+      //console.log('📸 Screenshot saved as yelp-debug.png');
 
       // 1. Pehle saari valid links collect karein
       const businessLinks = await page.evaluate(() => {

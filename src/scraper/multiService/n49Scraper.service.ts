@@ -16,7 +16,7 @@ export class N49ScraperService {
     name: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    console.log(`\n🚀 [N49] Starting Scrape for: ${name} in ${location}`);
+    //console.log(`\n🚀 [N49] Starting Scrape for: ${name} in ${location}`);
 
     const browser = await chromium.launch({
       headless: true,
@@ -43,7 +43,7 @@ export class N49ScraperService {
       // const searchUrl = `https://www.n49.com/search/${searchLocation}/${searchQuery}/`;
       const searchUrl = `https://www.n49.com/search/${searchQuery}/42041/${searchLocation}/`;
 
-      console.log(`🔗 [N49] Navigating to Search: ${searchUrl}`);
+      //console.log(`🔗 [N49] Navigating to Search: ${searchUrl}`);
       // await page.goto(searchUrl, {
       //   waitUntil: 'domcontentloaded',
       //   // waitUntil: 'load',
@@ -99,7 +99,7 @@ export class N49ScraperService {
         return [...new Set(foundLinks)].slice(0, 5);
       });
 
-      console.log(`✅ [N49] Found ${links.length} potential links.`);
+      // console.log(`✅ [N49] Found ${links.length} potential links.`);
 
       const finalResults: LocationResponseDto[] = [];
 
@@ -179,7 +179,7 @@ export class N49ScraperService {
       return [];
     } finally {
       await browser.close();
-      console.log('--- 🏁 N49 SCRAPER FINISHED ---');
+      //console.log('--- 🏁 N49 SCRAPER FINISHED ---');
     }
   }
 
@@ -204,7 +204,7 @@ export class N49ScraperService {
       });
       if (!existing) {
         await this.locationRepo.save(this.locationRepo.create(item));
-        console.log(`💾 [N49] Saved: ${item.name}`);
+        //console.log(`💾 [N49] Saved: ${item.name}`);
       }
     }
   }

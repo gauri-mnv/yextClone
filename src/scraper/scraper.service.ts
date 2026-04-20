@@ -6,6 +6,9 @@ import { YelpScraperService } from '../scraper/multiService/yelpScaper.service';
 // import { InstagramScraperService } from '../scraper/multiService/instagramScraper.service';
 import { N49ScraperService } from '../scraper/multiService/n49Scraper.service';
 import { MapQuestScraperService } from '../scraper/multiService/mapquestScraper.service';
+import { OpendiScraperService } from '../scraper/multiService/opendiScraper.service';
+import { CylexScraperService } from './multiService/cylexScraper.service';
+import { ProfileCanadaScraperService } from './multiService/profileCanada.service';
 import { Location } from './location.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,6 +24,9 @@ export class ScraperService {
     // private instagramService: InstagramScraperService,
     private n49Service: N49ScraperService,
     private mapquestService: MapQuestScraperService,
+    private opendiService: OpendiScraperService,
+    private cylexService: CylexScraperService,
+    private profileCanadaService: ProfileCanadaScraperService,
   ) {}
 
   //combine
@@ -31,46 +37,41 @@ export class ScraperService {
     await this.locationRepo.clear();
     console.log(`🚀 Starting Multi-Platform Scraping for: ${name}`);
 
-    const [googleData, yelpData, N49ScraperData, mapquestData] =
-      await Promise.all([
-        this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
-        this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
-        this.n49Service.scrapeN49(name, location),
-        this.mapquestService.scrapeMapQuest(`${name} ${location}`),
-      ]);
+    const [
+      googleData,
+      yelpData,
+      N49ScraperData,
+      mapquestData,
+      opendiData,
+      cylexData,
+      profileCanadaData,
+    ] = await Promise.all([
+      this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
+      this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
+      this.n49Service.scrapeN49(name, location),
+      this.mapquestService.scrapeMapQuest(`${name} ${location}`),
+      this.opendiService.scrapeOpendi(name, location),
+      this.cylexService.scrapeCylex(name, location),
+      this.profileCanadaService.scrapeProfileCanada(name, location),
+    ]);
     const combinedData = [
       ...googleData,
       ...yelpData,
       ...N49ScraperData,
       ...mapquestData,
+      ...opendiData,
+      ...cylexData,
+      ...profileCanadaData,
     ];
-    // const [googleData, yelpData, bingData, instagramData, N49ScraperData] =
-    //   await Promise.all([
-    //     this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
-    //     this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
-    //     this.bingService.scrapeBing(name, location),
-    //     this.instagramService.scrapeInstagram(name, location),
-    //     this.n49Service.scrapeN49(name, location),
-    //   ]);
-    // const combinedData = [...N49ScraperData];
-    // ];
-
-    // const [googleData, yelpData, bingData, instagramData, N49ScraperData] =
-    //   await Promise.all([
-    //     this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
-    //     this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
-    //     this.bingService.scrapeBing(name, location),
-    //     this.instagramService.scrapeInstagram(name, location),
-    //     this.n49Service.scrapeN49(name, location),
-    //   ]);
-    // const combinedData = [...N49ScraperData];
-
     console.log(
       `📊 Total Results Found: ${combinedData.length} 
       (Google: ${googleData.length}, 
       Yelp: ${yelpData.length},
       mapquestData:${mapquestData.length},
-      N49Scraper:${N49ScraperData.length})`,
+      N49Scraper:${N49ScraperData.length},
+      Opendi:${opendiData.length}),
+      Cylex:${cylexData.length},
+      profileCanadaService:profileCanadaData.length,`,
     );
     // console.log(
     //   `📊 Total Results Found: ${combinedData.length} (N49Scraper:${N49ScraperData.length})`,
