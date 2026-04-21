@@ -57,7 +57,7 @@ export class N49ScraperService {
       try {
         await page.waitForSelector(
           '.suggestion-search, .search-suggestions, a[href*="/biz/"]',
-          { timeout: 10000 },
+          { timeout: 20000 },
         );
       } catch (e) {
         console.log(

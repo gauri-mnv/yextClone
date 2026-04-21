@@ -7,6 +7,7 @@ import { Location } from '../location.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { chromium } from 'playwright-extra';
+// import axios from 'axios';
 
 @Injectable()
 export class CylexScraperService {
@@ -33,6 +34,9 @@ export class CylexScraperService {
         '--use-gl=swiftshader',
         '--disable-webgl',
       ],
+      proxy: {
+        server: 'http://ca-residential-proxy:port',
+      },
     });
     console.log('location:', location);
     const context = await browser.newContext({
@@ -40,7 +44,6 @@ export class CylexScraperService {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
       viewport: { width: 1280, height: 720 },
     });
-
     const page = await context.newPage();
 
     // Stealth script level 1

@@ -16,9 +16,9 @@ export class ProfileCanadaScraperService {
     name: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    console.log(
-      `\n🚀 [ProfileCanada] Starting Scrape for: ${name} in ${location}`,
-    );
+    // console.log(
+    //   `\n🚀 [ProfileCanada] Starting Scrape for: ${name} in ${location}`,
+    // );
 
     // 1. City Name Extract karna (e.g., "Airdrie, AB" -> "Airdrie")
     // const cityPart = location.split(',')[1]?.trim().split(' ')[0] || '';
@@ -30,7 +30,7 @@ export class ProfileCanadaScraperService {
         : '';
 
     if (!cityName) {
-      console.log('❌ City name extract nahi ho paya.');
+      // console.log('❌ City name extract nahi ho paya.');
       return [];
     }
 
@@ -44,7 +44,7 @@ export class ProfileCanadaScraperService {
     try {
       // 2. City-based Category URL build karna
       const searchUrl = `https://www.profilecanada.com/category.cfm?cat=8021_Dentists&provP=AB&city=${cityName}`;
-      console.log(`🔗 [ProfileCanada] Navigating to: ${searchUrl}`);
+      // console.log(`🔗 [ProfileCanada] Navigating to: ${searchUrl}`);
 
       await page.goto(searchUrl, {
         waitUntil: 'domcontentloaded',
@@ -69,13 +69,13 @@ export class ProfileCanadaScraperService {
       }, name);
 
       if (!targetLink) {
-        console.log(
-          `⚠️ [ProfileCanada] Name "${name}" result page par nahi mila.`,
-        );
+        // console.log(
+        //   `⚠️ [ProfileCanada] Name "${name}" result page par nahi mila.`,
+        // );
         return [];
       }
 
-      console.log(`🎯 [ProfileCanada] Business Link Found: ${targetLink}`);
+      // console.log(`🎯 [ProfileCanada] Business Link Found: ${targetLink}`);
 
       // 4. Link par click/navigate karke NAP + Website fetch karna
       await page.goto(targetLink, { waitUntil: 'domcontentloaded' });
@@ -117,7 +117,7 @@ export class ProfileCanadaScraperService {
         timestamp: new Date().toISOString(),
       };
 
-      console.log(`✅ [ProfileCanada] Extracted: ${finalResult.name}`);
+      // console.log(`✅ [ProfileCanada] Extracted: ${finalResult.name}`);
       return [finalResult];
     } catch (error) {
       console.error('❌ [ProfileCanada] Scraper Error:', error);
