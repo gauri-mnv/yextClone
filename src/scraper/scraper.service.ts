@@ -4,13 +4,14 @@ import { GoogleMapsScraperService } from './multiService/GoogleMapsScraper.servi
 import { YelpScraperService } from '../scraper/multiService/yelpScaper.service';
 // import { BingScraperService } from '../scraper/multiService/bingScraper.service';
 // import { InstagramScraperService } from '../scraper/multiService/instagramScraper.service';
-// import { N49ScraperService } from '../scraper/multiService/n49Scraper.service';
+import { N49ScraperService } from '../scraper/multiService/n49Scraper.service';
 import { MapQuestScraperService } from '../scraper/multiService/mapquestScraper.service';
 import { OpendiScraperService } from '../scraper/multiService/opendiScraper.service';
 // import { CylexScraperService } from './multiService/cylexScraper.service';
 import { ProfileCanadaScraperService } from './multiService/profileCanada.service';
 // import { BrownbookScraperService } from './multiService/brownbookScraper.service';
-import { InfobelScraperService } from './multiService/infobelScraper.service';
+// import { InfobelScraperService } from './multiService/infobelScraper.service';
+
 import { Location } from './location.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -22,15 +23,16 @@ export class ScraperService {
     private locationRepo: Repository<Location>,
     private googleMapsScraperService: GoogleMapsScraperService,
     private yelpScraperService: YelpScraperService,
-    // private bingService: BingScraperService,
-    // private instagramService: InstagramScraperService,
-    // private n49Service: N49ScraperService,
+    private n49Service: N49ScraperService,
     private mapquestService: MapQuestScraperService,
     private opendiService: OpendiScraperService,
-    // private cylexService: CylexScraperService,
     private profileCanadaService: ProfileCanadaScraperService,
+
+    // private cylexService: CylexScraperService,
+    // private bingService: BingScraperService,
+    // private instagramService: InstagramScraperService,
     // private brownbookScraperService: BrownbookScraperService,
-    private infobelScraperService: InfobelScraperService,
+    // private infobelScraperService: InfobelScraperService,
   ) {}
 
   //combine
@@ -44,46 +46,47 @@ export class ScraperService {
     const [
       googleData,
       yelpData,
-      // N49ScraperData,
+      N49ScraperData,
       mapquestData,
       opendiData,
-      // cylexData,
       profileCanadaData,
+      // cylexData,
       // brownbookData,
-      infobelData,
+      // infobelData,
     ] = await Promise.all([
       this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
       this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
-      // this.n49Service.scrapeN49(name, location),
+      this.n49Service.scrapeN49(name, location),
       this.mapquestService.scrapeMapQuest(`${name} ${location}`),
       this.opendiService.scrapeOpendi(name, location),
-      // this.cylexService.scrapeCylex(name, location),
       this.profileCanadaService.scrapeProfileCanada(name, location),
+      // this.cylexService.scrapeCylex(name, location),
       // this.brownbookScraperService.scrapeBrownbook(name, location),
-      this.infobelScraperService.scrapeInfobel(name, location),
+      // this.infobelScraperService.scrapeInfobel(name, location),
     ]);
     const combinedData = [
       ...googleData,
       ...yelpData,
-      // ...N49ScraperData,
+      ...N49ScraperData,
       ...mapquestData,
       ...opendiData,
-      // ...cylexData,
       ...profileCanadaData,
+      // ...cylexData,
       // ...brownbookData,
-      ...infobelData,
+      // ...infobelData,
     ];
     console.log(
       `📊 Total Results Found: ${combinedData.length} 
       (Google: ${googleData.length}, 
       Yelp: ${yelpData.length},
       mapquestData:${mapquestData.length},
-     N49Scraper:${0},
-      Opendi:${opendiData.length}),
-      Cylex:${0},
-      profileCanadaService:${profileCanadaData.length},
+     N49Scraper:${N49ScraperData.length},
+      Opendi:${opendiData.length},
+         profileCanadaService:${profileCanadaData.length},
+
+        Cylex:${0},
        brownbookData:${0},
-       infobelData:${infobelData.length}`,
+       infobelData:${0}`,
     );
 
     return combinedData;

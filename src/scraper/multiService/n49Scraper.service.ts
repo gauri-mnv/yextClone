@@ -125,7 +125,6 @@ export class N49ScraperService {
               document.querySelector('h1, .biz-name')?.textContent || '-';
             // console.log('Inside browser, found name:', bizName);
 
-            // Phone usually in a specific class or clickable link
             const phoneEl = document.querySelector(
               '.biz-phone, [href^="tel:"]',
             );

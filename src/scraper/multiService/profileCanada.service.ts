@@ -19,10 +19,6 @@ export class ProfileCanadaScraperService {
     // console.log(
     //   `\n🚀 [ProfileCanada] Starting Scrape for: ${name} in ${location}`,
     // );
-
-    // 1. City Name Extract karna (e.g., "Airdrie, AB" -> "Airdrie")
-    // const cityPart = location.split(',')[1]?.trim().split(' ')[0] || '';
-    // Agar location "123 Main St, Airdrie, AB" hai toh niche wala logic better hai:
     const parts = location.split(',');
     const cityName =
       parts.length > 1
@@ -42,7 +38,6 @@ export class ProfileCanadaScraperService {
     const page = await context.newPage();
 
     try {
-      // 2. City-based Category URL build karna
       const searchUrl = `https://www.profilecanada.com/category.cfm?cat=8021_Dentists&provP=AB&city=${cityName}`;
       // console.log(`🔗 [ProfileCanada] Navigating to: ${searchUrl}`);
 
@@ -54,7 +49,6 @@ export class ProfileCanadaScraperService {
       // 3. Page par Business Name search karna aur link find karna
       const targetLink = await page.evaluate((targetName) => {
         const lowerName = targetName.toLowerCase();
-        // Saare links check karo jo companydetail.cfm contain karte hain
         const allLinks = Array.from(
           document.querySelectorAll('a[href*="companydetail.cfm"]'),
         );
@@ -76,8 +70,6 @@ export class ProfileCanadaScraperService {
       }
 
       // console.log(`🎯 [ProfileCanada] Business Link Found: ${targetLink}`);
-
-      // 4. Link par click/navigate karke NAP + Website fetch karna
       await page.goto(targetLink, { waitUntil: 'domcontentloaded' });
 
       const extractedData = await page.evaluate((link) => {

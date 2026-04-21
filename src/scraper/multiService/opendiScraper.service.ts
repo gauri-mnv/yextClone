@@ -50,15 +50,12 @@ export class OpendiScraperService {
         timeout: 30000,
       });
 
-      // 1. Extracting Links from search results
       const links = await page.evaluate(() => {
-        // Opendi usually lists businesses with <a> tags containing the business name
-        // We look for links that lead to a specific business profile
         const selectors = [
-          'a.details', // Screenshot wala Details button
-          'a[href*="/details/"]', // Alternative details path
-          '.search-result h3 a', // Business title link
-          'a[href^="https://www.opendi.ca/"]', // Kisi bhi valid link ke liye
+          'a.details',
+          'a[href*="/details/"]',
+          '.search-result h3 a',
+          'a[href^="https://www.opendi.ca/"]',
         ];
 
         const found: string[] = [];
@@ -96,7 +93,6 @@ export class OpendiScraperService {
           });
 
           const extractedData = await newPage.evaluate((currentLink) => {
-            // Opendi specific selectors
             const bizName =
               document.querySelector('.name h2, h1')?.textContent || '-';
             const getDDByDT = (term: string) => {
@@ -111,7 +107,7 @@ export class OpendiScraperService {
             };
 
             const address = getDDByDT('Address') || '-';
-            const place = getDDByDT('Place') || ''; // City/Postal code area
+            const place = getDDByDT('Place') || '';
             const phone = getDDByDT('Landline') || getDDByDT('Phone') || '-';
             const website =
               document
@@ -124,7 +120,7 @@ export class OpendiScraperService {
               address: `${address} ${place}`.trim().replace(/\s+/g, ' '),
               locationLink: website ? website : currentLink,
             };
-          }, link); // Passing link to avoid ReferenceError
+          }, link);
 
           // console.log(
           //   `📊 [Opendi] Extracted: Name: ${extractedData.name} | Phone: ${extractedData.phone}`,

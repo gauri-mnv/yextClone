@@ -14,7 +14,6 @@ export class ScraperController {
   @Post()
   @UsePipes(new ValidationPipe({ transform: true }))
   async getLocations(@Body() scrapeDto: ScrapeRequestDto) {
-    // Ab hum dono parameters pass karenge
     return this.scraperService.scrapeAllPlatforms(
       scrapeDto.name,
       scrapeDto.location,
