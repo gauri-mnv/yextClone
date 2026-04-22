@@ -4,7 +4,7 @@ import { ScraperService } from './scraper.service';
 import { GoogleMapsScraperService } from './multiService/GoogleMapsScraper.service';
 import { YelpScraperService } from './multiService/yelpScaper.service';
 import { BingScraperService } from './multiService/bingScraper.service';
-import { N49ScraperService } from './multiService/n49Scraper.service';
+// import { N49ScraperService } from './multiService/n49Scraper.service';
 import { MapQuestScraperService } from './multiService/mapquestScraper.service';
 import { OpendiScraperService } from './multiService/opendiScraper.service';
 import { ProfileCanadaScraperService } from './multiService/profileCanada.service';
@@ -25,7 +25,7 @@ import { FacebookScraperService } from './demoService/facebookScraper.service';
     YelpScraperService,
     BingScraperService,
     InstagramScraperService,
-    N49ScraperService,
+    // N49ScraperService,
     MapQuestScraperService,
     OpendiScraperService,
     ProfileCanadaScraperService,
@@ -33,7 +33,7 @@ import { FacebookScraperService } from './demoService/facebookScraper.service';
     YelpScraperService,
     BingScraperService,
     InstagramScraperService,
-    N49ScraperService,
+    // N49ScraperService,
     WhereToScraperService,
     HotfrogScraperService,
     FacebookScraperService,
@@ -43,4 +43,4 @@ import { FacebookScraperService } from './demoService/facebookScraper.service';
     // InfobelScraperService,
   ],
 })
-export class ScraperModule {}
+export class ScraperModule { }
