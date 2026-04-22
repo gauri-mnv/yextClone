@@ -2,13 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from './dto/location-response.dto';
 import { GoogleMapsScraperService } from './multiService/GoogleMapsScraper.service';
 import { YelpScraperService } from '../scraper/multiService/yelpScaper.service';
-// import { BingScraperService } from '../scraper/multiService/bingScraper.service';
-// import { InstagramScraperService } from '../scraper/multiService/instagramScraper.service';
 import { N49ScraperService } from '../scraper/multiService/n49Scraper.service';
 import { MapQuestScraperService } from '../scraper/multiService/mapquestScraper.service';
 import { OpendiScraperService } from '../scraper/multiService/opendiScraper.service';
-// import { CylexScraperService } from './multiService/cylexScraper.service';
 import { ProfileCanadaScraperService } from './multiService/profileCanada.service';
+import { IGlobalScraperService } from './multiService/iGlobalScraper.service';
+// import { BingScraperService } from '../scraper/multiService/bingScraper.service';
+// import { InstagramScraperService } from '../scraper/multiService/instagramScraper.service';
+// import { CylexScraperService } from './multiService/cylexScraper.service';
 // import { BrownbookScraperService } from './multiService/brownbookScraper.service';
 // import { InfobelScraperService } from './multiService/infobelScraper.service';
 
@@ -27,6 +28,7 @@ export class ScraperService {
     private mapquestService: MapQuestScraperService,
     private opendiService: OpendiScraperService,
     private profileCanadaService: ProfileCanadaScraperService,
+    private iGlobalScraperService: IGlobalScraperService,
 
     // private cylexService: CylexScraperService,
     // private bingService: BingScraperService,
@@ -50,6 +52,7 @@ export class ScraperService {
       mapquestData,
       opendiData,
       profileCanadaData,
+      iGlobalData,
       // cylexData,
       // brownbookData,
       // infobelData,
@@ -60,6 +63,7 @@ export class ScraperService {
       this.mapquestService.scrapeMapQuest(`${name} ${location}`),
       this.opendiService.scrapeOpendi(name, location),
       this.profileCanadaService.scrapeProfileCanada(name, location),
+      this.iGlobalScraperService.scrapeIGlobal(name),
       // this.cylexService.scrapeCylex(name, location),
       // this.brownbookScraperService.scrapeBrownbook(name, location),
       // this.infobelScraperService.scrapeInfobel(name, location),
@@ -71,6 +75,7 @@ export class ScraperService {
       ...mapquestData,
       ...opendiData,
       ...profileCanadaData,
+      ...iGlobalData,
       // ...cylexData,
       // ...brownbookData,
       // ...infobelData,
@@ -83,6 +88,7 @@ export class ScraperService {
      N49Scraper:${N49ScraperData.length},
       Opendi:${opendiData.length},
          profileCanadaService:${profileCanadaData.length},
+        iGlobal:${iGlobalData.length},
 
         Cylex:${0},
        brownbookData:${0},

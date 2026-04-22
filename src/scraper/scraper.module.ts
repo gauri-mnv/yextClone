@@ -11,6 +11,7 @@ import { N49ScraperService } from './multiService/n49Scraper.service';
 import { MapQuestScraperService } from './multiService/mapquestScraper.service';
 import { OpendiScraperService } from './multiService/opendiScraper.service';
 import { ProfileCanadaScraperService } from './multiService/profileCanada.service';
+import { IGlobalScraperService } from './multiService/iGlobalScraper.service';
 // import { CylexScraperService } from './multiService/cylexScraper.service';
 // import { BrownbookScraperService } from './multiService/brownbookScraper.service';
 // import { InfobelScraperService } from './multiService/infobelScraper.service';
@@ -28,6 +29,7 @@ import { ProfileCanadaScraperService } from './multiService/profileCanada.servic
     MapQuestScraperService,
     OpendiScraperService,
     ProfileCanadaScraperService,
+    IGlobalScraperService,
     // CylexScraperService,
     // BrownbookScraperService,
     // InfobelScraperService,
