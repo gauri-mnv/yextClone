@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
@@ -17,8 +18,6 @@ export class OpendiScraperService {
     name: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    // console.log(`\n🏢 [Opendi] Starting Scrape for: ${name} in ${location}`);
-
     const browser = await chromium.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -36,14 +35,9 @@ export class OpendiScraperService {
       const searchQuery = encodeURIComponent(name);
       //   const searchLocation = encodeURIComponent(location);
       const pincode = await getPincodeFromAddress(page, location);
-      // console.log(
-      //   `📍 [Opendi] Original Loc: ${location} -> Refined Loc: ${pincode}`,
-      // );
       const searchLocation = encodeURIComponent(pincode);
       const searchUrl = `https://www.opendi.ca/search?what=${searchQuery}&where=${searchLocation}`;
       //   https://www.opendi.ca/search?what=Airdrie+Choice+Dental&where=403&searchtype=industry&submit=Search
-
-      // console.log(`🔗 [Opendi] Navigating to: ${searchUrl}`);
 
       await page.goto(searchUrl, {
         waitUntil: 'domcontentloaded',
@@ -77,16 +71,11 @@ export class OpendiScraperService {
 
         return [...new Set(found)].slice(0, 5);
       });
-
-      // console.log(`✅ [Opendi] Found ${links.length} potential links.`);
-
       const finalResults: LocationResponseDto[] = [];
 
-      // 2. Deep Dive Loop
       for (const link of links) {
         const newPage = await context.newPage();
         try {
-          // console.log(`\n--- 🕵️ [Opendi] Deep Searching: ${link} ---`);
           await newPage.goto(link, {
             waitUntil: 'domcontentloaded',
             timeout: 20000,
@@ -122,10 +111,6 @@ export class OpendiScraperService {
             };
           }, link);
 
-          // console.log(
-          //   `📊 [Opendi] Extracted: Name: ${extractedData.name} | Phone: ${extractedData.phone}`,
-          // );
-
           finalResults.push({
             name: extractedData.name,
             address: extractedData.address,
@@ -135,46 +120,45 @@ export class OpendiScraperService {
             timestamp: new Date().toISOString(),
           });
         } catch (e) {
-          console.log(`❌ [Opendi] Error deep searching: ${link}`, e);
+          alert(`❌ [Opendi] Error deep searching: ${link} - ${e}`);
         } finally {
           await newPage.close();
         }
       }
 
       if (finalResults.length > 0) {
-        await this.saveResults(finalResults, name);
+        //   await this.saveResults(finalResults, name);
+        return finalResults;
       }
-
-      return finalResults;
+      return [];
     } catch (error) {
-      console.error('❌ [Opendi] Global Scraper Error:', error);
+      alert(`❌ [Opendi] Global Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();
-      // console.log('--- 🏁 OPENDI SCRAPER FINISHED ---');
     }
   }
 
-  async saveResults(results: LocationResponseDto[], targetName: string) {
-    const searchKeywords = targetName.toLowerCase().split(' ');
-    for (const item of results) {
-      if (!item.name || item.name === '-') continue;
+  // async saveResults(results: LocationResponseDto[], targetName: string) {
+  //   const searchKeywords = targetName.toLowerCase().split(' ');
+  //   for (const item of results) {
+  //     if (!item.name || item.name === '-') continue;
 
-      const itemName = item.name.toLowerCase();
-      const matchCount = searchKeywords.filter((key) =>
-        itemName.includes(key),
-      ).length;
+  //     const itemName = item.name.toLowerCase();
+  //     const matchCount = searchKeywords.filter((key) =>
+  //       itemName.includes(key),
+  //     ).length;
 
-      // 50% Match Logic
-      if (matchCount < Math.ceil(searchKeywords.length / 2)) continue;
+  //     // 50% Match Logic
+  //     if (matchCount < Math.ceil(searchKeywords.length / 2)) continue;
 
-      const existing = await this.locationRepo.findOne({
-        where: { locationLink: item.locationLink },
-      });
-      if (!existing) {
-        await this.locationRepo.save(this.locationRepo.create(item));
-        // console.log(`💾 [Opendi] Saved: ${item.name}`);
-      }
-    }
-  }
+  //     const existing = await this.locationRepo.findOne({
+  //       where: { locationLink: item.locationLink },
+  //     });
+  //     if (!existing) {
+  //       await this.locationRepo.save(this.locationRepo.create(item));
+  //       // console.log(`💾 [Opendi] Saved: ${item.name}`);
+  //     }
+  //   }
+  // }
 }

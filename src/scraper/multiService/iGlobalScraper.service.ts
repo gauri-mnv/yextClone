@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -25,7 +26,6 @@ export class IGlobalScraperService {
 
     try {
       const searchUrl = `https://www.iglobal.co/canada/search/${encodeURIComponent(targetName)}`;
-      console.log(`🌐 [iGlobal] Navigating to: ${searchUrl}`);
 
       await page.goto(searchUrl, {
         waitUntil: 'domcontentloaded',
@@ -52,12 +52,8 @@ export class IGlobalScraperService {
       );
 
       if (!businessUrl) {
-        console.log(
-          `❌ [iGlobal] No exact match found in list for ${targetName}`,
-        );
         return [];
       }
-      console.log(`📄 [iGlobal] Opening detail page: ${businessUrl}`);
       await page.goto(businessUrl, {
         waitUntil: 'networkidle',
         timeout: 30000,
@@ -90,7 +86,6 @@ export class IGlobalScraperService {
         };
       }, businessUrl);
 
-      console.log(`✅ [iGlobal] Successfully extracted: ${finalData.name}`);
       return [
         {
           ...finalData,
@@ -98,7 +93,7 @@ export class IGlobalScraperService {
         },
       ];
     } catch (e) {
-      console.error('❌ [iGlobal] Error:', e);
+      alert(`❌ [iGlobal] Error: ${e}`);
       return [];
     } finally {
       await browser.close();

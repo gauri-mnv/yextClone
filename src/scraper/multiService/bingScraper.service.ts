@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
@@ -15,17 +16,13 @@ export class BingScraperService {
     name: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    console.log(`🔎 Bing Search Started for: ${name} in ${location}`);
-
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({});
     const page = await context.newPage();
 
     try {
-      // Bing search query for specific business and location
       const searchQuery = encodeURIComponent(`${name} ${location}`);
       const searchUrl = `https://www.bing.com/search?q=${searchQuery}`;
-      // console.log(`🔗 Navigating to Bing: ${searchUrl}`);
 
       await page.goto(searchUrl, { waitUntil: 'load', timeout: 30000 });
       try {
@@ -34,11 +31,9 @@ export class BingScraperService {
           timeout: 5000,
         });
       } catch (e) {
-        console.log('⚠️ Bing took too long, trying to scrape anyway...', e);
+        alert(`⚠️ Bing took too long, trying to scrape anyway... ${e}`);
       }
-      // await page.waitForSelector('#b_results', { timeout: 10000 });
       const results = await page.evaluate(() => {
-        // Bing organic search results usually sit in 'li.b_algo'
         const items = Array.from(document.querySelectorAll('li.b_algo'));
 
         return items
@@ -54,8 +49,6 @@ export class BingScraperService {
             const link = nameEl.href || '';
 
             const snippet = snippetEl?.textContent || ' ';
-
-            // Basic logic to extract phone from snippet if present
             const phoneMatch = snippet.match(
               /\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})/,
             );
@@ -73,46 +66,42 @@ export class BingScraperService {
           .filter((i) => i !== null);
       });
 
-      // console.log(`✅ Bing found ${results.length} items`);
-
       return results.map((item) => ({
         ...item,
         source: 'Bing',
         timestamp: new Date().toISOString(),
       }));
     } catch (error) {
-      console.error('❌ Bing Scraper Error:', error);
+      alert(`❌ Bing Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();
     }
   }
 
-  async saveResults(results: LocationResponseDto[], targetName: string) {
-    const searchKeywords = targetName.toLowerCase().split(' ');
+  // async saveResults(results: LocationResponseDto[], targetName: string) {
+  //   const searchKeywords = targetName.toLowerCase().split(' ');
 
-    for (const item of results) {
-      if (!item.name) continue;
+  //   for (const item of results) {
+  //     if (!item.name) continue;
 
-      // 2. Strict Match Check: Kam se kam 2 keywords match hone chahiye
-      const itemName = item.name.toLowerCase();
-      const matchCount = searchKeywords.filter((key) =>
-        itemName.includes(key),
-      ).length;
-      if (matchCount < Math.ceil(searchKeywords.length / 2)) {
-        // console.log(`🚫 Filtering out unrelated result: ${item.name}`);
-        continue;
-      }
-      const existing = await this.locationRepo.findOne({
-        where: { locationLink: item.locationLink },
-      });
-      if (!existing) {
-        const newLocation = this.locationRepo.create(item);
-        await this.locationRepo.save(newLocation);
-      } else {
-        console.log(`⏭️ Skipping duplicate: ${item.name}`);
-        await this.locationRepo.update(existing.id, item);
-      }
-    }
-  }
+  //     const itemName = item.name.toLowerCase();
+  //     const matchCount = searchKeywords.filter((key) =>
+  //       itemName.includes(key),
+  //     ).length;
+  //     if (matchCount < Math.ceil(searchKeywords.length / 2)) {
+  //       continue;
+  //     }
+  //     const existing = await this.locationRepo.findOne({
+  //       where: { locationLink: item.locationLink },
+  //     });
+  //     if (!existing) {
+  //       const newLocation = this.locationRepo.create(item);
+  //       await this.locationRepo.save(newLocation);
+  //     } else {
+  //       console.log(`⏭️ Skipping duplicate: ${item.name}`);
+  //       await this.locationRepo.update(existing.id, item);
+  //     }
+  //   }
+  // }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
@@ -11,16 +12,12 @@ export class GoogleMapsScraperService {
     @InjectRepository(Location)
     private locationRepo: Repository<Location>,
   ) {}
-  //google scraper
   async scrapeGoogleMaps(query: string): Promise<LocationResponseDto[]> {
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
       const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
-
-      // console.log(`Searching: ${searchUrl}`);
-
       await page.goto(searchUrl, {
         waitUntil: 'domcontentloaded',
         timeout: 20000,
@@ -34,28 +31,18 @@ export class GoogleMapsScraperService {
           await consentButton.click();
         }
       } catch (error) {
-        console.log(error);
+        alert(error);
       }
       try {
         await page.waitForSelector('div[role="article"], h1.DUwDvf', {
           timeout: 15000,
         });
       } catch (error) {
-        console.log('No results found or timeout', error);
+        alert(`No results found or timeout: ${error}`);
         await browser.close();
         return [];
       }
-      // const html = await page.content();
-      // console.log('📄 [N49 DEBUG HTML]:', html);
-
-      // if (html.includes('Access denied') || html.includes('Cloudflare')) {
-      //   console.log('❌ [N49] Blocked by Cloudflare/Bot Protection');
-      //   return [];
-      // }
       const scrapedData = await page.evaluate(() => {
-        // console.log('Scraping done');
-        //console.log('document', document);
-        // 1. Check karein agar direct Place Card khula hai (Exact match)
         const exactName = document.querySelector('h1.DUwDvf')?.textContent;
         if (exactName) {
           // Agar direct page khula hai, toh yahan se NAP uthayein
@@ -80,9 +67,6 @@ export class GoogleMapsScraperService {
         const items = Array.from(
           document.querySelectorAll('div[role="article"]'),
         );
-
-        //console.log('Scraping done for array');
-        //console.log('document', items);
         return items.map((item) => ({
           name: item.querySelector('.qBF1Pd')?.textContent || 'N/A',
           address:
@@ -95,8 +79,6 @@ export class GoogleMapsScraperService {
             (item.querySelector('a.hfpxzc') as HTMLAnchorElement)?.href || '',
         }));
       });
-
-      // 5. Database Save
       const finalResults: LocationResponseDto[] = [];
 
       for (const item of scrapedData) {
@@ -120,10 +102,9 @@ export class GoogleMapsScraperService {
         }
       }
       await browser.close();
-      //console.log(`Successfully scraped ${finalResults.length} items`);
       return finalResults;
     } catch (error) {
-      console.error('Scraping Error:', error);
+      alert(`❌ Scraping Error: ${error}`);
       await browser.close();
       return [];
     } finally {
@@ -131,22 +112,22 @@ export class GoogleMapsScraperService {
     }
   }
 
-  async saveResults(results: LocationResponseDto[]) {
-    for (const item of results) {
-      // 1. Check karein kya ye link pehle se DB mein hai?
-      const existing = await this.locationRepo.findOne({
-        where: { locationLink: item.locationLink },
-      });
+  // async saveResults(results: LocationResponseDto[]) {
+  //   for (const item of results) {
+  //     // 1. Check karein kya ye link pehle se DB mein hai?
+  //     const existing = await this.locationRepo.findOne({
+  //       where: { locationLink: item.locationLink },
+  //     });
 
-      if (!existing) {
-        // 2. Agar nahi hai, tabhi save karein
-        const newLocation = this.locationRepo.create(item);
-        await this.locationRepo.save(newLocation);
-      } else {
-        // 3. (Optional) Agar hai, toh sirf data update kar sakte hain
-        //console.log(`⏭️ Skipping duplicate: ${item.name}`);
-        await this.locationRepo.update(existing.id, item);
-      }
-    }
-  }
+  //     if (!existing) {
+  //       // 2. Agar nahi hai, tabhi save karein
+  //       const newLocation = this.locationRepo.create(item);
+  //       await this.locationRepo.save(newLocation);
+  //     } else {
+  //       // 3. (Optional) Agar hai, toh sirf data update kar sakte hain
+  //       //console.log(`⏭️ Skipping duplicate: ${item.name}`);
+  //       await this.locationRepo.update(existing.id, item);
+  //     }
+  //   }
+  // }
 }

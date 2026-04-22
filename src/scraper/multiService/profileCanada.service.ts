@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -16,9 +17,6 @@ export class ProfileCanadaScraperService {
     name: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    // console.log(
-    //   `\n🚀 [ProfileCanada] Starting Scrape for: ${name} in ${location}`,
-    // );
     const parts = location.split(',');
     const cityName =
       parts.length > 1
@@ -26,7 +24,6 @@ export class ProfileCanadaScraperService {
         : '';
 
     if (!cityName) {
-      // console.log('❌ City name extract nahi ho paya.');
       return [];
     }
 
@@ -39,7 +36,6 @@ export class ProfileCanadaScraperService {
 
     try {
       const searchUrl = `https://www.profilecanada.com/category.cfm?cat=8021_Dentists&provP=AB&city=${cityName}`;
-      // console.log(`🔗 [ProfileCanada] Navigating to: ${searchUrl}`);
 
       await page.goto(searchUrl, {
         waitUntil: 'domcontentloaded',
@@ -63,13 +59,9 @@ export class ProfileCanadaScraperService {
       }, name);
 
       if (!targetLink) {
-        // console.log(
-        //   `⚠️ [ProfileCanada] Name "${name}" result page par nahi mila.`,
-        // );
         return [];
       }
 
-      // console.log(`🎯 [ProfileCanada] Business Link Found: ${targetLink}`);
       await page.goto(targetLink, { waitUntil: 'domcontentloaded' });
 
       const extractedData = await page.evaluate((link) => {
@@ -109,10 +101,9 @@ export class ProfileCanadaScraperService {
         timestamp: new Date().toISOString(),
       };
 
-      // console.log(`✅ [ProfileCanada] Extracted: ${finalResult.name}`);
       return [finalResult];
     } catch (error) {
-      console.error('❌ [ProfileCanada] Scraper Error:', error);
+      alert(`❌ [ProfileCanada] Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
@@ -16,36 +17,15 @@ export class YelpScraperService {
     businessName: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    //console.log('--- 🚀 YELP SCRAPER STARTED ---');
     const browser = await chromium.launch({
       headless: true,
-      // args: [
-      //   '--no-sandbox',
-      //   '--disable-setuid-sandbox',
-      //   '--disable-dev-shm-usage',
-      //   '--disable-accelerated-2d-canvas',
-      //   '--no-first-run',
-      //   '--no-zygote',
-      //   '--single-process', // Resources bachata hai
-      //   '--disable-gpu',
-      // ],
     });
-    // const context = await browser.newContext({});
-    // const context = await browser.newContext({
-    //   userAgent:
-    //     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-    //   viewport: { width: 1280, height: 720 },
-    //   extraHTTPHeaders: {
-    //     'Accept-Language': 'en-US,en;q=0.9',
-    //   },
-    // });
     const context = await browser.newContext({
       userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
       viewport: { width: 1280, height: 720 },
       extraHTTPHeaders: {
         'Accept-Language': 'en-US,en;q=0.9',
-        // Referer: 'https://www.google.com/',
       },
       deviceScaleFactor: 1,
       hasTouch: false,
@@ -57,9 +37,6 @@ export class YelpScraperService {
 
     try {
       const searchUrl = `https://www.yelp.com/search?find_desc=${encodeURIComponent(businessName)}&find_loc=${encodeURIComponent(location)}`;
-      //console.log(`🔗 Navigating to: ${searchUrl}`);
-
-      // await page.goto(searchUrl, { waitUntil: 'networkidle' });
 
       await page.goto('https://www.yelp.com', { waitUntil: 'networkidle' });
       await page.goto(searchUrl, { waitUntil: 'networkidle' });
@@ -67,15 +44,9 @@ export class YelpScraperService {
 
       const hasCaptcha = await page.isVisible('iframe[title*="reCAPTCHA"]');
       if (hasCaptcha) {
-        // console.log(
-        //   '🚨 CAPTCHA DETECTED! Please solve it in the browser window.',
-        // );
         await page.waitForTimeout(15000);
       }
       await page.screenshot({ path: 'yelp-debug.png' });
-      //console.log('📸 Screenshot saved as yelp-debug.png');
-
-      // 1. Pehle saari valid links collect karein
       const businessLinks = await page.evaluate(() => {
         const cards = Array.from(
           document.querySelectorAll('div[data-testid="serp-ia-card"]'),
@@ -94,9 +65,7 @@ export class YelpScraperService {
         });
         return [...new Set(links)];
       });
-      // console.log(
-      //   `🔗 Found ${businessLinks.length} unique business links. Fetching details...`,
-      // );
+
       const finalResults: LocationResponseDto[] = [];
 
       for (const link of businessLinks.slice(0, 5)) {
@@ -131,8 +100,8 @@ export class YelpScraperService {
             timestamp: new Date().toISOString(),
           });
         } catch (e) {
-          console.log(`Failed to fetch details for ${link}`, e);
-          // console.error('❌ Yelp Error:', e);
+          alert(`Failed to fetch details for ${link}: ${e}`);
+
           return [];
         }
       }
@@ -140,23 +109,22 @@ export class YelpScraperService {
       return finalResults;
     } finally {
       await browser.close();
-      // console.log('--- 🏁 YELP SCRAPER FINISHED ---');
     }
   }
-  async saveResults(results: LocationResponseDto[]) {
-    for (const item of results) {
-      // 1. Check karein kya ye link pehle se DB mein hai?
-      const existing = await this.locationRepo.findOne({
-        where: { locationLink: item.locationLink },
-      });
+  // async saveResults(results: LocationResponseDto[]) {
+  //   for (const item of results) {
+  //     // 1. Check karein kya ye link pehle se DB mein hai?
+  //     const existing = await this.locationRepo.findOne({
+  //       where: { locationLink: item.locationLink },
+  //     });
 
-      if (!existing) {
-        const newLocation = this.locationRepo.create(item);
-        await this.locationRepo.save(newLocation);
-      } else {
-        // console.log(`⏭️ Skipping duplicate: ${item.name}`);
-        await this.locationRepo.update(existing.id, item);
-      }
-    }
-  }
+  //     if (!existing) {
+  //       const newLocation = this.locationRepo.create(item);
+  //       await this.locationRepo.save(newLocation);
+  //     } else {
+  //       // console.log(`⏭️ Skipping duplicate: ${item.name}`);
+  //       await this.locationRepo.update(existing.id, item);
+  //     }
+  //   }
+  // }
 }

@@ -43,7 +43,6 @@ export class ScraperService {
     location: string = '',
   ): Promise<LocationResponseDto[]> {
     await this.locationRepo.clear();
-    // console.log(`🚀 Starting Multi-Platform Scraping for: ${name}`);
 
     const [
       googleData,

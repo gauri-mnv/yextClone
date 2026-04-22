@@ -1,13 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-require-imports */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { Location } from '../location.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { chromium } from 'playwright-extra';
-// import axios from 'axios';
 
 @Injectable()
 export class CylexScraperService {
@@ -20,10 +18,8 @@ export class CylexScraperService {
     name: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    console.log(`\n🔍 [Cylex] Starting Scrape for: ${name}`);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const stealth = require('puppeteer-extra-plugin-stealth')();
-    chromium.use(stealth);
+    // const stealth = require('puppeteer-extra-plugin-stealth')();
+    // chromium.use(stealth);
     const browser = await chromium.launch({
       headless: true,
       args: [
@@ -38,7 +34,6 @@ export class CylexScraperService {
         server: 'http://ca-residential-proxy:port',
       },
     });
-    console.log('location:', location);
     const context = await browser.newContext({
       userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
@@ -52,7 +47,6 @@ export class CylexScraperService {
     });
 
     try {
-      console.log(`🏠 [Cylex] Visiting Homepage...`);
       const searchQuery = name.replace(/\s+/g, '+');
       // Direct search ke bajaye home page par jayein
       await page.goto(
@@ -62,7 +56,6 @@ export class CylexScraperService {
           timeout: 60000,
         },
       );
-      console.log('⏳ [Cylex] Verifying Browser (Cloudflare)...');
 
       await Promise.race([
         page.waitForSelector('.search-results, .h4.bold', { timeout: 45000 }), // Success path
@@ -78,13 +71,10 @@ export class CylexScraperService {
         { timeout: 30000 },
       );
 
-      // Ab results ka wait karein
       await page.waitForSelector('button.btn-outline-secondary, .h4.bold a', {
         state: 'visible',
         timeout: 30000,
       });
-      // 🔥 Step 1: Wait for Cloudflare to clear automatically
-      console.log('⏳ [Cylex] Solving Cloudflare challenge...');
       await page
         .waitForFunction(
           () => {
@@ -95,12 +85,7 @@ export class CylexScraperService {
           },
           { timeout: 30000 },
         )
-        .catch(() =>
-          console.log('⚠️ Still on challenge page, trying to proceed...'),
-        );
-
-      // 🔥 Step 2: Now wait for Search Input (Fix for your Timeout Error)
-      // Humein thoda aur generic selector use karna chahiye
+        .catch(() => alert('⚠️ Still on challenge page, trying to proceed...'));
       const searchInputSelector =
         'input#search-what, input[name="q"], .search-form input';
       await page.waitForSelector(searchInputSelector, {
@@ -108,11 +93,9 @@ export class CylexScraperService {
         timeout: 15000,
       });
 
-      console.log('⌨️ [Cylex] Typing business name...');
       await page.fill(searchInputSelector, name);
       await page.keyboard.press('Enter');
 
-      // 🔥 Step 3: Wait for Results
       await page.waitForSelector('.search-results, .h4.bold', {
         timeout: 20000,
       });
@@ -145,77 +128,12 @@ export class CylexScraperService {
           .slice(0, 3);
       });
 
-      console.log(`✅ [Cylex] Found ${links.length} links.`);
-      // FIXED SELECTOR: Removed extra comma and added more reliable targets
-      //   const successSelector =
-      //     '.search-results, h4.bold, .addr, button.btn-outline-secondary';
-
-      //   try {
-      //     await page.waitForSelector(successSelector, {
-      //       timeout: 20000,
-      //       state: 'visible',
-      //     });
-      //   } catch (e) {
-      //     const bodyText = await page.innerText('body');
-      //     if (
-      //       bodyText.includes('Cloudflare') ||
-      //       bodyText.includes('Access Denied')
-      //     ) {
-      //       console.log(
-      //         '🛡️ [Cylex] Cloudflare challenge detected. Waiting 10s for auto-solve...',
-      //         e,
-      //       );
-      //       await page.waitForTimeout(10000); // Give Cloudflare time to redirect
-      //     }
-      //   }
-
-      // 4. Extracting Links
-      //   const links = await page.evaluate(() => {
-      //     const results: string[] = [];
-
-      //     // Method A: Title Links
-      //     const titleLinks = Array.from(
-      //       document.querySelectorAll('.h4.bold a, .search-results-title'),
-      //     );
-      //     titleLinks.forEach((a) => {
-      //       const href = (a as HTMLAnchorElement).href;
-      //       if (href && href.includes('/company/')) results.push(href);
-      //     });
-
-      //     // Method B: More Info Buttons (image_f6f9a9 reference)
-      //     const moreInfoButtons = Array.from(
-      //       document.querySelectorAll(
-      //         'a.btn-outline-secondary, button.btn-outline-secondary',
-      //       ),
-      //     );
-      //     moreInfoButtons.forEach((btn) => {
-      //       if (btn.tagName === 'A') {
-      //         results.push((btn as HTMLAnchorElement).href);
-      //       } else {
-      //         const onclick = btn.getAttribute('onclick') || '';
-      //         const match = onclick.match(/'([^']+)'/);
-      //         if (match && match[1]) {
-      //           const cleanUrl = match[1].startsWith('http')
-      //             ? match[1]
-      //             : `https://www.cylex-canada.ca${match[1]}`;
-      //           results.push(cleanUrl);
-      //         }
-      //       }
-      //     });
-
-      //     return [...new Set(results)]
-      //       .filter((l) => l.includes('cylex-canada.ca'))
-      //       .slice(0, 5);
-      //   });
-
-      console.log(`✅ [Cylex] Found ${links.length} potential links.`);
       const finalResults: LocationResponseDto[] = [];
 
       // 5. Deep Dive with logic from image_f86a08.png
       for (const link of links) {
         const newPage = await context.newPage();
         try {
-          console.log(`\n--- 🕵️ [Cylex] Deep Searching: ${link} ---`);
           await newPage.goto(link, {
             waitUntil: 'domcontentloaded',
             timeout: 30000,
@@ -250,7 +168,7 @@ export class CylexScraperService {
             timestamp: new Date().toISOString(),
           });
         } catch (e) {
-          console.log(`❌ [Cylex] Link failed: ${link}`, e);
+          alert(`❌ [Cylex] Link failed: ${link}`);
         } finally {
           await newPage.close();
         }
@@ -260,11 +178,10 @@ export class CylexScraperService {
       // await this.saveResults(finalResults, name, address);
       return finalResults;
     } catch (error) {
-      console.error('❌ [Cylex] Scraper Error:', error);
+      alert(`❌ [Cylex] Scraping failed for ${name} in ${location}: ${error}`);
       return [];
     } finally {
       await browser.close();
-      console.log('--- 🏁 CYLEX SCRAPER FINISHED ---');
     }
   }
 }

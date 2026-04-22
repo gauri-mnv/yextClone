@@ -35,43 +35,29 @@ export class InfobelScraperService {
       let city = parts[0]; // Default fallback
 
       if (parts.length >= 2) {
-        // Canada addresses mein City aksar second last ya second position pe hoti hai
-        // Hum Province/Postal Code wale part ko skip karke City uthayenge
         city = parts[1];
       }
-
-      // Cleanup: Agar city me still "Market St" jaisa kuch hai, toh regex use karein
-      console.log(`🔍 [Infobel] Searching for "Dental Clinics" in ${city}...`);
-
       await page.goto('https://www.infobel.com/en/canada', {
         waitUntil: 'domcontentloaded',
-        // timeout: 60000,
       });
-      console.log(`⌨️ Filling: Dental Clinics in ${city}`);
+
       await page.waitForSelector('#search-term-input-header', {
         timeout: 10000,
       });
       await page.fill('#search-term-input-header', 'Dental Clinics');
-
-      // "Where" field
       await page.fill('#search-location-input-header', city);
 
-      // 3. Click Search [image_a16d23.jpg: btn-search-header]
       await page.click('#btn-search-header');
 
-      // 4. Wait for Results List
       await page.waitForSelector('.customer-box', { timeout: 45000 });
 
-      // 3. List me se EXACT Business Name find karein
-      console.log(`🎯 Looking for exact match: ${targetName}`);
-      page.on('console', (msg) => {
-        // Aap isme prefix bhi laga sakte ho taaki pehchan sako ki ye browser ka log hai
-        console.log(`🌐 [BROWSER]: ${msg.text()}`);
-      });
+      // page.on('console', (msg) => {
+      //   console.log(`🌐 [BROWSER]: ${msg.text()}`);
+      // });
       const businessUrl = await page.evaluate((name) => {
         const items = Array.from(document.querySelectorAll('.customer-box'));
         const target = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        console.log(`--- Starting Matching for: ${target} ---`);
+
         // Name check logic
         const match = items.find((item) => {
           const foundName =
@@ -80,14 +66,12 @@ export class InfobelScraperService {
             .toLowerCase()
             .replace(/^\d+\.\s*/, '') // Shuruat ka "6. " hatao
             .replace(/[^a-z0-9]/g, ''); // Sab alphanumeric clean karo
-          console.log(
-            `Checking Item: "${foundName}" | Cleaned: "${cleanFoundName}"`,
-          );
+
           return (
             cleanFoundName.includes(target) || target.includes(cleanFoundName)
           );
         });
-        console.log(`--- Matching Completed ---`, match);
+
         return match
           ? (match.querySelector('a.customerName h2 a') as HTMLAnchorElement)
               ?.href
@@ -95,15 +79,10 @@ export class InfobelScraperService {
       }, targetName);
 
       if (!businessUrl) {
-        console.log('❌ [Infobel] Exact business name list not found .');
         return [];
       }
 
-      // 4. More Info (Detail Page) par jayein
-      console.log('📄 [Infobel] Opening detail page...');
       await page.goto(businessUrl, { waitUntil: 'networkidle' });
-
-      // 5. Detail Page se saara data extract karein
       const finalData = await page.evaluate((sourceUrl) => {
         return {
           name: document.querySelector('h1')?.textContent?.trim() || '-',
@@ -122,10 +101,10 @@ export class InfobelScraperService {
         };
       }, businessUrl);
 
-      console.log(`✅ [Infobel] Success: Extracted data for ${finalData.name}`);
       return [finalData];
     } catch (e) {
-      console.error('❌ [Infobel] Error:', e);
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      alert(`❌ [Infobel] Error: ${e}`);
       return [];
     } finally {
       await browser.close();

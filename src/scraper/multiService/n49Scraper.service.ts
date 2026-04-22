@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
@@ -16,8 +17,6 @@ export class N49ScraperService {
     name: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    //console.log(`\n🚀 [N49] Starting Scrape for: ${name} in ${location}`);
-
     const browser = await chromium.launch({
       headless: true,
       args: [
@@ -37,21 +36,13 @@ export class N49ScraperService {
     try {
       const cityOrZip =
         location.split(',')[1]?.trim() || location.split(' ').pop() || location;
-      // N49 Search URL Structure
       const searchQuery = encodeURIComponent(name);
       const searchLocation = encodeURIComponent(cityOrZip);
       // const searchUrl = `https://www.n49.com/search/${searchLocation}/${searchQuery}/`;
       const searchUrl = `https://www.n49.com/search/${searchQuery}/42041/${searchLocation}/`;
 
-      //console.log(`🔗 [N49] Navigating to Search: ${searchUrl}`);
-      // await page.goto(searchUrl, {
-      //   waitUntil: 'domcontentloaded',
-      //   // waitUntil: 'load',
-      //   timeout: 30000,
-      // });
-
       await page.goto(searchUrl, {
-        waitUntil: 'networkidle', // 'domcontentloaded' se behtar hai dynamic content ke liye
+        waitUntil: 'networkidle',
         timeout: 45000,
       });
       try {
@@ -60,31 +51,10 @@ export class N49ScraperService {
           { timeout: 20000 },
         );
       } catch (e) {
-        console.log(
-          '⚠️ [N49] Suggestions/Results took too long or not found.',
-          e,
+        alert(
+          `⚠️ [N49] Suggestions/Results took too long or not found.,\n${e}`,
         );
       }
-      // FIX 4: Check karein agar Cloudflare ya block page toh nahi aa raha
-      // const html = await page.content();
-      // // console.log('📄 [N49 DEBUG HTML]:', html);
-
-      // if (html.includes('Access denied') || html.includes('Cloudflare')) {
-      //   console.log('❌ [N49] Blocked by Cloudflare/Bot Protection');
-      //   return [];
-      // }
-
-      // 🕵️ DEBUG: Console mein sirf results wala part print karke dekho
-      // const resultsContainer = await page.evaluate(() => {
-      //   return (
-      //     document.querySelector(
-      //       '.suggestion-search, .search-suggestions, #search-results',
-      //     )?.innerHTML || 'NOT FOUND'
-      //   );
-      // });
-      // console.log('🔍 [DEBUG] Results Section HTML:', resultsContainer);
-
-      // 1. Extracting Listing Links from Search Results
       const links = await page.evaluate(() => {
         const foundLinks: string[] = [];
         const allAnchors = Array.from(
@@ -94,24 +64,13 @@ export class N49ScraperService {
           const href = (a as HTMLAnchorElement).href;
           if (href) foundLinks.push(href);
         });
-
-        // Unique links nikalna aur top 3 return karna
         return [...new Set(foundLinks)].slice(0, 5);
       });
 
-      // console.log(`✅ [N49] Found ${links.length} potential links.`);
-
       const finalResults: LocationResponseDto[] = [];
-
-      // 2. Deep Dive into each business link
       for (const link of links) {
         const newPage = await context.newPage();
-        newPage.on('console', (msg) => {
-          console.log(`🌐 [BROWSER LOG]: ${msg.text()}`);
-        });
         try {
-          // console.log(`\n--- 🕵️ [N49] Deep Searching: ${link} ---`);
-
           await newPage.goto(link, {
             waitUntil: 'load',
             timeout: 20000,
@@ -119,11 +78,8 @@ export class N49ScraperService {
           await page.waitForTimeout(1000);
 
           const extractedData = await newPage.evaluate(() => {
-            // N49 specific selectors
-
             const bizName =
               document.querySelector('h1, .biz-name')?.textContent || '-';
-            // console.log('Inside browser, found name:', bizName);
 
             const phoneEl = document.querySelector(
               '.biz-phone, [href^="tel:"]',
@@ -140,14 +96,6 @@ export class N49ScraperService {
               address: address.trim().replace(/\s+/g, ' '),
             };
           });
-          console.log(`New page evaluated:${newPage.url()}`);
-
-          // 🔥 PUSH SE PEHLE CONSOLE LOG
-          // console.log(`📊 [N49] Extracted:`);
-          // console.log(`   Name:  ${extractedData.name}`);
-          // console.log(`   Phone: ${extractedData.phone}`);
-          // console.log(`   address: ${extractedData.address}`);
-          // console.log(`   link: ${newPage.url()}`);
 
           finalResults.push({
             name: extractedData.name !== '' ? extractedData.name : '-',
@@ -157,54 +105,51 @@ export class N49ScraperService {
             source: 'N49',
             timestamp: new Date().toISOString(),
           });
-
-          // console.log(`✅ [N49] Added to final results:`, finalResults);
           return finalResults;
         } catch (e) {
-          console.log(`❌ [N49] Error scraping deep link: ${link}`, e);
+          alert(`❌ [N49] Error scraping deep link: ${link}\n${e}`);
         } finally {
           await newPage.close();
         }
       }
 
-      // 3. Save to Database
-      if (finalResults.length > 0) {
-        await this.saveResults(finalResults, name);
-      }
+      // // 3. Save to Database
+      // if (finalResults.length > 0) {
+      //   await this.saveResults(finalResults, name);
+      // }
 
       return finalResults;
     } catch (error) {
-      console.error('❌ [N49] Global Scraper Error:', error);
+      alert(`❌ [N49] Global Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();
-      //console.log('--- 🏁 N49 SCRAPER FINISHED ---');
     }
   }
 
-  async saveResults(results: LocationResponseDto[], targetName: string) {
-    const searchKeywords = targetName.toLowerCase().split(' ');
-    for (const item of results) {
-      if (!item.name || item.name === '-') continue;
+  // async saveResults(results: LocationResponseDto[], targetName: string) {
+  //   const searchKeywords = targetName.toLowerCase().split(' ');
+  //   for (const item of results) {
+  //     if (!item.name || item.name === '-') continue;
 
-      const itemName = item.name.toLowerCase();
-      const matchCount = searchKeywords.filter((key) =>
-        itemName.includes(key),
-      ).length;
+  //     const itemName = item.name.toLowerCase();
+  //     const matchCount = searchKeywords.filter((key) =>
+  //       itemName.includes(key),
+  //     ).length;
 
-      // 50% Match Logic
-      if (matchCount < Math.ceil(searchKeywords.length / 2)) {
-        console.log(`🚫 [N49] Filtering out unrelated: ${item.name}`);
-        continue;
-      }
+  //     // 50% Match Logic
+  //     if (matchCount < Math.ceil(searchKeywords.length / 2)) {
 
-      const existing = await this.locationRepo.findOne({
-        where: { locationLink: item.locationLink },
-      });
-      if (!existing) {
-        await this.locationRepo.save(this.locationRepo.create(item));
-        //console.log(`💾 [N49] Saved: ${item.name}`);
-      }
-    }
-  }
+  //       continue;
+  //     }
+
+  //     const existing = await this.locationRepo.findOne({
+  //       where: { locationLink: item.locationLink },
+  //     });
+  //     if (!existing) {
+  //       await this.locationRepo.save(this.locationRepo.create(item));
+
+  //     }
+  //   }
+  // }
 }
