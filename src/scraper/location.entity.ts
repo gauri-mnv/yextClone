@@ -22,7 +22,7 @@ export class Location {
   @Column({ default: 'Google Maps' })
   source: string;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', unique: true })
   locationLink: string;
 
   @CreateDateColumn()
