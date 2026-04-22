@@ -15,7 +15,7 @@ export class InstagramScraperService {
 
   async scrapeInstagram(name: string): Promise<LocationResponseDto[]> {
     const browser = await chromium.launch({
-      headless: false, // keep false for stability
+      headless: true, // keep false for stability
     });
 
     //USE SAVED SESSION (VERY IMPORTANT)
@@ -129,7 +129,7 @@ export class InstagramScraperService {
         };
       });
 
-      console.log('[IG] Extracted:', data);
+      // console.log('[IG] Extracted:', data);
 
       //STEP 5: MAP RESPONSE
       const result: LocationResponseDto = {

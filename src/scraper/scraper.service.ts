@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from './dto/location-response.dto';
 import { GoogleMapsScraperService } from './multiService/GoogleMapsScraper.service';
-import { YelpScraperService } from '../scraper/multiService/yelpScaper.service';
-import { N49ScraperService } from '../scraper/multiService/n49Scraper.service';
+import { YelpScraperService } from './multiService/yelpScaper.service';
+// import { N49ScraperService } from '../scraper/multiService/n49Scraper.service';
 import { MapQuestScraperService } from '../scraper/multiService/mapquestScraper.service';
 import { OpendiScraperService } from '../scraper/multiService/opendiScraper.service';
 import { ProfileCanadaScraperService } from './multiService/profileCanada.service';
@@ -22,7 +22,7 @@ export class ScraperService {
     // private locationRepo: Repository<Location>,
     private googleMapsScraperService: GoogleMapsScraperService,
     private yelpScraperService: YelpScraperService,
-    private n49Service: N49ScraperService,
+    // private n49Service: N49ScraperService,
     private mapquestService: MapQuestScraperService,
     private opendiService: OpendiScraperService,
     private profileCanadaService: ProfileCanadaScraperService,
@@ -43,7 +43,7 @@ export class ScraperService {
     const [
       googleData,
       yelpData,
-      N49ScraperData,
+      // N49ScraperData,
       mapquestData,
       opendiData,
       profileCanadaData,
@@ -55,7 +55,7 @@ export class ScraperService {
     ] = await Promise.all([
       this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
       this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
-      this.n49Service.scrapeN49(name, location),
+      // this.n49Service.scrapeN49(name, location),
       this.mapquestService.scrapeMapQuest(`${name} ${location}`),
       this.opendiService.scrapeOpendi(name, location),
       this.profileCanadaService.scrapeProfileCanada(name, location),
@@ -68,7 +68,7 @@ export class ScraperService {
     const combinedData = [
       ...googleData,
       ...yelpData,
-      ...N49ScraperData,
+      // ...N49ScraperData,
       ...mapquestData,
       ...opendiData,
       ...profileCanadaData,
