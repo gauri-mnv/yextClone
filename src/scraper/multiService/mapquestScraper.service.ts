@@ -31,7 +31,6 @@ export class MapQuestScraperService {
     const page = await context.newPage();
 
     try {
-      // MapQuest Search URL Pattern: /search/results?query=[BusinessName]&location=[Location]
       const searchQuery = encodeURIComponent(query);
       const searchUrl = `https://www.mapquest.com/search/${searchQuery}`;
 
@@ -48,10 +47,7 @@ export class MapQuestScraperService {
           `⚠️ [MapQuest] No immediate results found. Checking page content... - ${e}`,
         );
       }
-
-      // 1. Extracting Links
       const links = await page.evaluate(() => {
-        // MapQuest ke naye structure mein 'a' tags ko target karein jo profile par le jayein
         const anchors = Array.from(
           document.querySelectorAll('a, a[href], a.title'),
         );
@@ -134,10 +130,6 @@ export class MapQuestScraperService {
           await newPage.close();
         }
       }
-
-      // if (finalResults.length > 0) {
-      //   await this.saveResults(finalResults, query);
-      // }
       return finalResults;
     } catch (error) {
       console.log(`❌ [MapQuest] Global Scraper Error: ${error}`);

@@ -11,11 +11,9 @@ chromium.use(StealthPlugin());
 
 @Injectable()
 export class IGlobalScraperService {
-  constructor(
-    // @InjectRepository(Location)
-    // private locationRepo: Repository<Location>,
-  ) {}
-
+  constructor() {}
+  // @InjectRepository(Location)
+  // private locationRepo: Repository<Location>,
   async scrapeIGlobal(targetName: string): Promise<LocationResponseDto[]> {
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({

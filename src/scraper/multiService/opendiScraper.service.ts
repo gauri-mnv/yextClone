@@ -31,7 +31,6 @@ export class OpendiScraperService {
     const page = await context.newPage();
 
     try {
-      // Opendi Search URL Pattern: opendi.ca/s/[BusinessName]/[Location]
       const searchQuery = encodeURIComponent(name);
       const pincode = await getPincodeFromAddress(page, location);
       const searchLocation = encodeURIComponent(pincode);
