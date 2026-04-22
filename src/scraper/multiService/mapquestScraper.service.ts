@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
@@ -30,7 +31,6 @@ export class MapQuestScraperService {
     const page = await context.newPage();
 
     try {
-      // MapQuest Search URL Pattern: /search/results?query=[BusinessName]&location=[Location]
       const searchQuery = encodeURIComponent(query);
       const searchUrl = `https://www.mapquest.com/search/${searchQuery}`;
 
@@ -40,40 +40,14 @@ export class MapQuestScraperService {
       });
       await page.waitForTimeout(3000);
 
-      // Results container ke aane ka wait karein
       try {
         await page.waitForTimeout(3000);
       } catch (e) {
         console.log(
-          '⚠️ [MapQuest] No immediate results found. Checking page content...',
-          e,
+          `⚠️ [MapQuest] No immediate results found. Checking page content... - ${e}`,
         );
       }
-
-      // 1. Extracting Links
-      // const links = await page.evaluate(() => {
-      //   const anchors = Array.from(
-      //     document.querySelectorAll('a.title, a.name, .result-item a,h1 '),
-      //   );
-      //   return anchors
-      //     .map((a) => (a as HTMLAnchorElement).href)
-      //     .filter((link) => {
-      //       // Sirf un links ko lein jo kisi business profile par ja rahe hon
-      //       return (
-      //         link.split('/').length > 5 && // Kam se kam Country/Province/City/Name hona chahiye
-      //         !link.includes('/search') && // Search results page ko skip karein
-      //         !link.includes('/directions') && // Directions ko skip karein
-      //         !link.includes('/hotels') && // Faltu categories skip karein
-      //         link.includes('mapquest.com/')
-      //       );
-      //     })
-      //     .filter((link, index, self) => self.indexOf(link) === index)
-      //     .slice(0, 6);
-      // });
-
-      // 1. Extracting Links
       const links = await page.evaluate(() => {
-        // MapQuest ke naye structure mein 'a' tags ko target karein jo profile par le jayein
         const anchors = Array.from(
           document.querySelectorAll('a, a[href], a.title'),
         );
@@ -98,38 +72,30 @@ export class MapQuestScraperService {
       for (const link of links) {
         const newPage = await context.newPage();
         try {
-          // console.log(`\n--- 🕵️ [MapQuest] Deep Searching: ${link} ---`);
           await newPage.goto(link, {
             waitUntil: 'domcontentloaded',
             timeout: 25000,
           });
 
           const extractedData = await newPage.evaluate((link) => {
-            // 1. Name: MapQuest aksar h1 ya data-testid="listing-name" use karta hai
             const h1 = document.querySelector('h1')?.innerText;
             const iD = document.querySelector(
               '[data-testid="infosheet-header"]',
             )?.innerHTML;
 
-            // data-testid="infosheet-header"
-            // const name = h1||iD || '';
             const name = h1 ?? iD ?? '';
-
-            // 2. Address: Aapke screenshot (image_48bb82.jpg) ke hisab se address
-            // is specific span mein hai. Hum [data-testid] ya generic classes use karenge.
             const addressEl =
               document.querySelector('[data-testid="details-address-text"]') ||
               document.querySelector('.address-container span') ||
               document.querySelector('.address');
 
             const address = addressEl?.textContent || '-';
-            // 3. Phone: data-testid="bento-call" wale anchor ka href uthayenge
             const phoneEl = document.querySelector(
               '[data-testid="bento-call"]',
             );
             let phone = '-';
             if (phoneEl) {
-              const href = phoneEl.getAttribute('href'); // tel:+15877759911
+              const href = phoneEl.getAttribute('href');
               phone = href ? href.replace('tel:', '') : '-';
             }
             // // 3. Phone: Screenshot mein niche 'tel' link dikh raha hai
@@ -141,35 +107,32 @@ export class MapQuestScraperService {
               link: link,
             };
           }, link);
-          console.log({
-            name: extractedData.name,
-            address: extractedData.address,
-            phone: extractedData.phone,
-            locationLink: link,
-            source: 'MapQuest',
-            timestamp: new Date().toISOString(),
-          });
-          finalResults.push({
-            name: extractedData.name,
-            address: extractedData.address,
-            phone: extractedData.phone,
-            locationLink: link,
-            source: 'MapQuest',
-            timestamp: new Date().toISOString(),
-          });
+          const targetClean = query.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const foundClean = extractedData.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+          if (
+            foundClean.includes(targetClean) ||
+            targetClean.includes(foundClean)
+          ) {
+            finalResults.push({
+              name: extractedData.name,
+              address: extractedData.address,
+              phone: extractedData.phone,
+              locationLink: link,
+              source: 'MapQuest',
+              timestamp: new Date().toISOString(),
+            });
+          }
         } catch (e) {
-          console.log(`❌ [MapQuest] Error deep searching: ${link}`, e);
+          console.log(`❌ [MapQuest] Error deep searching: ${link} - ${e}`);
         } finally {
           await newPage.close();
         }
       }
-
-      // if (finalResults.length > 0) {
-      //   await this.saveResults(finalResults, query);
-      // }
       return finalResults;
     } catch (error) {
-      console.error('❌ [MapQuest] Global Scraper Error:', error);
+      console.log(`❌ [MapQuest] Global Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();

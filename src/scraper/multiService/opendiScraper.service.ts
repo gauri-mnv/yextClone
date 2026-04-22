@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
@@ -30,10 +31,8 @@ export class OpendiScraperService {
     const page = await context.newPage();
 
     try {
-      // Opendi Search URL Pattern: opendi.ca/s/[BusinessName]/[Location]
       const searchQuery = encodeURIComponent(name);
       const pincode = await getPincodeFromAddress(page, location);
-
       const searchLocation = encodeURIComponent(pincode);
       const searchUrl = `https://www.opendi.ca/search?what=${searchQuery}&where=${searchLocation}`;
       //   https://www.opendi.ca/search?what=Airdrie+Choice+Dental&where=403&searchtype=industry&submit=Search
@@ -70,14 +69,11 @@ export class OpendiScraperService {
 
         return [...new Set(found)].slice(0, 5);
       });
-
       const finalResults: LocationResponseDto[] = [];
 
-      // 2. Deep Dive Loop
       for (const link of links) {
         const newPage = await context.newPage();
         try {
-          // console.log(`\n--- 🕵️ [Opendi] Deep Searching: ${link} ---`);
           await newPage.goto(link, {
             waitUntil: 'domcontentloaded',
             timeout: 20000,
@@ -113,16 +109,32 @@ export class OpendiScraperService {
             };
           }, link);
 
-          finalResults.push({
-            name: extractedData.name,
-            address: extractedData.address,
-            phone: extractedData.phone,
-            locationLink: link,
-            source: 'Opendi',
-            timestamp: new Date().toISOString(),
-          });
+          const targetClean = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const foundClean = extractedData.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+
+          // Skip if it's "Privacy Policy" or other junk
+          if (foundClean.includes('privacypolicy') || foundClean === '-')
+            continue;
+
+          if (
+            foundClean.includes(targetClean) ||
+            targetClean.includes(foundClean)
+          ) {
+            finalResults.push({
+              name: extractedData.name,
+              address: extractedData.address,
+              phone: extractedData.phone,
+              locationLink: link,
+              source: 'Opendi',
+              timestamp: new Date().toISOString(),
+            });
+            await newPage.close();
+            return finalResults;
+          }
         } catch (e) {
-          console.log(`❌ [Opendi] Error deep searching: ${link}`, e);
+          console.log(`❌ [Opendi] Error deep searching: ${link} - ${e}`);
         } finally {
           await newPage.close();
         }
@@ -134,11 +146,10 @@ export class OpendiScraperService {
 
       return finalResults;
     } catch (error) {
-      console.error('❌ [Opendi] Global Scraper Error:', error);
+      console.log(`❌ [Opendi] Global Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();
-      // console.log('--- 🏁 OPENDI SCRAPER FINISHED ---');
     }
   }
 

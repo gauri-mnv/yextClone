@@ -35,8 +35,6 @@ export class InfobelScraperService {
       let city = parts[0]; // Default fallback
 
       if (parts.length >= 2) {
-        // Canada addresses mein City aksar second last ya second position pe hoti hai
-        // Hum Province/Postal Code wale part ko skip karke City uthayenge
         city = parts[1];
       }
 
@@ -44,20 +42,15 @@ export class InfobelScraperService {
 
       await page.goto('https://www.infobel.com/en/canada', {
         waitUntil: 'domcontentloaded',
-        // timeout: 60000,
       });
       await page.waitForSelector('#search-term-input-header', {
         timeout: 10000,
       });
       await page.fill('#search-term-input-header', 'Dental Clinics');
-
-      // "Where" field
       await page.fill('#search-location-input-header', city);
 
-      // 3. Click Search [image_a16d23.jpg: btn-search-header]
       await page.click('#btn-search-header');
 
-      // 4. Wait for Results List
       await page.waitForSelector('.customer-box', { timeout: 45000 });
 
       // 3. List me se EXACT Business Name find karein
@@ -94,8 +87,6 @@ export class InfobelScraperService {
 
       // 4. More Info (Detail Page) par jayein
       await page.goto(businessUrl, { waitUntil: 'networkidle' });
-
-      // 5. Detail Page se saara data extract karein
       const finalData = await page.evaluate((sourceUrl) => {
         return {
           name: document.querySelector('h1')?.textContent?.trim() || '-',
@@ -117,7 +108,8 @@ export class InfobelScraperService {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return [finalData];
     } catch (e) {
-      console.error('❌ [Infobel] Error:', e);
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      console.error(`❌ [Infobel] Error: ${e}`);
       return [];
     } finally {
       await browser.close();

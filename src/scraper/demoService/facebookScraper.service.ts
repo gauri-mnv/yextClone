@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, Logger } from '@nestjs/common';
 import { chromium } from 'playwright';
 import { LocationResponseDto } from '../dto/location-response.dto';
@@ -12,15 +14,13 @@ export class FacebookScraperService {
     });
 
     const context = await browser.newContext({
-      userAgent:
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       viewport: { width: 1280, height: 800 },
     });
 
     const page = await context.newPage();
 
     try {
-      
       //STEP 1: BUILD SLUGS (1 → 2 → 3 words)
       const words = name.toLowerCase().split(' ').filter(Boolean);
 
@@ -54,8 +54,8 @@ export class FacebookScraperService {
             if (
               text.includes("this content isn't available") ||
               text.includes("page isn't available") ||
-              text.includes("log in to facebook") ||
-              text.includes("you must log in")
+              text.includes('log in to facebook') ||
+              text.includes('you must log in')
             ) {
               return { valid: false };
             }
@@ -76,9 +76,7 @@ export class FacebookScraperService {
           //NAME MATCH CHECK
           const pageName = (validation.heading ?? '').toLowerCase();
 
-          const matchCount = words.filter((w) =>
-            pageName.includes(w),
-          ).length;
+          const matchCount = words.filter((w) => pageName.includes(w)).length;
 
           if (matchCount < Math.ceil(words.length / 2)) {
             this.logger.warn(`Name mismatch: ${pageName}`);
@@ -114,9 +112,7 @@ export class FacebookScraperService {
           const href = await link.getAttribute('href');
 
           if (href && href.includes('facebook.com')) {
-            const cleanLink = href
-              .split('&')[0]
-              .replace('/url?q=', '');
+            const cleanLink = href.split('&')[0].replace('/url?q=', '');
 
             if (!cleanLink.includes('search')) {
               targetLink = cleanLink;
@@ -148,8 +144,7 @@ export class FacebookScraperService {
           txt ? txt.replace(/\s+/g, ' ').trim() : '-';
 
         const name =
-          document.querySelector('h1')?.textContent ||
-          document.title;
+          document.querySelector('h1')?.textContent || document.title;
 
         const bodyText = document.body.innerText;
 
@@ -189,9 +184,7 @@ export class FacebookScraperService {
       //STEP 6: FINAL VALIDATION
       const itemName = data.name.toLowerCase();
 
-      const matchCount = words.filter((w) =>
-        itemName.includes(w),
-      ).length;
+      const matchCount = words.filter((w) => itemName.includes(w)).length;
 
       if (matchCount < Math.ceil(words.length / 2)) {
         this.logger.warn(`Final validation failed: ${data.name}`);

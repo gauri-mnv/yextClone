@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Page } from 'playwright';
 export async function getPincodeFromAddress(
   page: Page,
@@ -21,7 +22,7 @@ export async function getPincodeFromAddress(
     });
     return pincode || '-';
   } catch (error) {
-    console.error('❌ [Helper] Error fetching pincode:', error);
+    alert(`❌ [Helper] Error fetching pincode: ${error}`);
     return address;
   }
 }

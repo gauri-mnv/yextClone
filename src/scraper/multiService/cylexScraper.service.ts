@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 // import { Location } from '../location.entity';
@@ -14,12 +15,10 @@ export class CylexScraperService {
 
   async scrapeCylex(
     name: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     location: string,
   ): Promise<LocationResponseDto[]> {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const stealth = require('puppeteer-extra-plugin-stealth')();
-    chromium.use(stealth);
+    // const stealth = require('puppeteer-extra-plugin-stealth')();
+    // chromium.use(stealth);
     const browser = await chromium.launch({
       headless: true,
       args: [
@@ -70,7 +69,6 @@ export class CylexScraperService {
         { timeout: 30000 },
       );
 
-      // Ab results ka wait karein
       await page.waitForSelector('button.btn-outline-secondary, .h4.bold a', {
         state: 'visible',
         timeout: 30000,
@@ -86,12 +84,7 @@ export class CylexScraperService {
           },
           { timeout: 30000 },
         )
-        .catch(() =>
-          console.log('⚠️ Still on challenge page, trying to proceed...'),
-        );
-
-      // 🔥 Step 2: Now wait for Search Input (Fix for your Timeout Error)
-      // Humein thoda aur generic selector use karna chahiye
+        .catch(() => alert('⚠️ Still on challenge page, trying to proceed...'));
       const searchInputSelector =
         'input#search-what, input[name="q"], .search-form input';
       await page.waitForSelector(searchInputSelector, {
@@ -102,7 +95,6 @@ export class CylexScraperService {
       await page.fill(searchInputSelector, name);
       await page.keyboard.press('Enter');
 
-      // 🔥 Step 3: Wait for Results
       await page.waitForSelector('.search-results, .h4.bold', {
         timeout: 20000,
       });
@@ -134,68 +126,6 @@ export class CylexScraperService {
           .filter((l) => l.includes('/company/'))
           .slice(0, 3);
       });
-
-      // FIXED SELECTOR: Removed extra comma and added more reliable targets
-      //   const successSelector =
-      //     '.search-results, h4.bold, .addr, button.btn-outline-secondary';
-
-      //   try {
-      //     await page.waitForSelector(successSelector, {
-      //       timeout: 20000,
-      //       state: 'visible',
-      //     });
-      //   } catch (e) {
-      //     const bodyText = await page.innerText('body');
-      //     if (
-      //       bodyText.includes('Cloudflare') ||
-      //       bodyText.includes('Access Denied')
-      //     ) {
-      //       console.log(
-      //         '🛡️ [Cylex] Cloudflare challenge detected. Waiting 10s for auto-solve...',
-      //         e,
-      //       );
-      //       await page.waitForTimeout(10000); // Give Cloudflare time to redirect
-      //     }
-      //   }
-
-      // 4. Extracting Links
-      //   const links = await page.evaluate(() => {
-      //     const results: string[] = [];
-
-      //     // Method A: Title Links
-      //     const titleLinks = Array.from(
-      //       document.querySelectorAll('.h4.bold a, .search-results-title'),
-      //     );
-      //     titleLinks.forEach((a) => {
-      //       const href = (a as HTMLAnchorElement).href;
-      //       if (href && href.includes('/company/')) results.push(href);
-      //     });
-
-      //     // Method B: More Info Buttons (image_f6f9a9 reference)
-      //     const moreInfoButtons = Array.from(
-      //       document.querySelectorAll(
-      //         'a.btn-outline-secondary, button.btn-outline-secondary',
-      //       ),
-      //     );
-      //     moreInfoButtons.forEach((btn) => {
-      //       if (btn.tagName === 'A') {
-      //         results.push((btn as HTMLAnchorElement).href);
-      //       } else {
-      //         const onclick = btn.getAttribute('onclick') || '';
-      //         const match = onclick.match(/'([^']+)'/);
-      //         if (match && match[1]) {
-      //           const cleanUrl = match[1].startsWith('http')
-      //             ? match[1]
-      //             : `https://www.cylex-canada.ca${match[1]}`;
-      //           results.push(cleanUrl);
-      //         }
-      //       }
-      //     });
-
-      //     return [...new Set(results)]
-      //       .filter((l) => l.includes('cylex-canada.ca'))
-      //       .slice(0, 5);
-      //   });
 
       const finalResults: LocationResponseDto[] = [];
 
@@ -237,21 +167,19 @@ export class CylexScraperService {
             timestamp: new Date().toISOString(),
           });
         } catch (e) {
-          console.log(`❌ [Cylex] Link failed: ${link}`, e);
+          console.error(`❌ [Cylex] Link failed: ${link} ${e}`);
         } finally {
           await newPage.close();
         }
       }
-
-      //   if (finalResults.length > 0)
-      // await this.saveResults(finalResults, name, address);
       return finalResults;
     } catch (error) {
-      console.error('❌ [Cylex] Scraper Error:', error);
+      console.error(
+        `❌ [Cylex] Scraping failed for ${name} in ${location}: ${error}`,
+      );
       return [];
     } finally {
       await browser.close();
-      console.log('--- 🏁 CYLEX SCRAPER FINISHED ---');
     }
   }
 }

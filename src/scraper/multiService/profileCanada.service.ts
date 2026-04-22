@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 // import { InjectRepository } from '@nestjs/typeorm';
 // import { Repository } from 'typeorm';
@@ -104,7 +105,7 @@ export class ProfileCanadaScraperService {
 
       return [finalResult];
     } catch (error) {
-      console.error('❌ [ProfileCanada] Scraper Error:', error);
+      console.error(`❌ [ProfileCanada] Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();

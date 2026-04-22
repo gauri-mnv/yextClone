@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
@@ -18,7 +19,6 @@ export class GoogleMapsScraperService {
     const page = await context.newPage();
     try {
       const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
-
       await page.goto(searchUrl, {
         waitUntil: 'domcontentloaded',
         timeout: 20000,
@@ -32,14 +32,14 @@ export class GoogleMapsScraperService {
           await consentButton.click();
         }
       } catch (error) {
-        console.log(error);
+        console.error(`Error occurred while accepting consent: ${error}`);
       }
       try {
         await page.waitForSelector('div[role="article"], h1.DUwDvf', {
           timeout: 15000,
         });
       } catch (error) {
-        console.log('No results found or timeout', error);
+        console.error(`No results found or timeout: ${error}`);
         await browser.close();
         return [];
       }
@@ -70,7 +70,6 @@ export class GoogleMapsScraperService {
         const items = Array.from(
           document.querySelectorAll('div[role="article"]'),
         );
-
         return items.map((item) => ({
           name: item.querySelector('.qBF1Pd')?.textContent || 'N/A',
           address:
@@ -83,8 +82,6 @@ export class GoogleMapsScraperService {
             (item.querySelector('a.hfpxzc') as HTMLAnchorElement)?.href || '',
         }));
       });
-
-      // 5. Database Save
       const finalResults: LocationResponseDto[] = [];
 
       for (const item of scrapedData) {
@@ -110,7 +107,7 @@ export class GoogleMapsScraperService {
       await browser.close();
       return finalResults;
     } catch (error) {
-      console.error('Scraping Error:', error);
+      console.error(`❌ Scraping Error: ${error}`);
       await browser.close();
       return [];
     } finally {

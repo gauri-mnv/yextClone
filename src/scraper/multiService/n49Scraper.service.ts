@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
@@ -31,13 +32,12 @@ export class N49ScraperService {
     try {
       const cityOrZip =
         location.split(',')[1]?.trim() || location.split(' ').pop() || location;
-      // N49 Search URL Structure
       const searchQuery = encodeURIComponent(name);
       const searchLocation = encodeURIComponent(cityOrZip);
       const searchUrl = `https://www.n49.com/search/${searchQuery}/42041/${searchLocation}/`;
 
       await page.goto(searchUrl, {
-        waitUntil: 'networkidle', // 'domcontentloaded' se behtar hai dynamic content ke liye
+        waitUntil: 'networkidle',
         timeout: 45000,
       });
       try {
@@ -47,30 +47,9 @@ export class N49ScraperService {
         );
       } catch (e) {
         console.log(
-          '⚠️ [N49] Suggestions/Results took too long or not found.',
-          e,
+          `⚠️ [N49] Suggestions/Results took too long or not found.,\n${e}`,
         );
       }
-      // FIX 4: Check karein agar Cloudflare ya block page toh nahi aa raha
-      // const html = await page.content();
-      // // console.log('📄 [N49 DEBUG HTML]:', html);
-
-      // if (html.includes('Access denied') || html.includes('Cloudflare')) {
-      //   console.log('❌ [N49] Blocked by Cloudflare/Bot Protection');
-      //   return [];
-      // }
-
-      // 🕵️ DEBUG: Console mein sirf results wala part print karke dekho
-      // const resultsContainer = await page.evaluate(() => {
-      //   return (
-      //     document.querySelector(
-      //       '.suggestion-search, .search-suggestions, #search-results',
-      //     )?.innerHTML || 'NOT FOUND'
-      //   );
-      // });
-      // console.log('🔍 [DEBUG] Results Section HTML:', resultsContainer);
-
-      // 1. Extracting Listing Links from Search Results
       const links = await page.evaluate(() => {
         const foundLinks: string[] = [];
         const allAnchors = Array.from(
@@ -80,19 +59,12 @@ export class N49ScraperService {
           const href = (a as HTMLAnchorElement).href;
           if (href) foundLinks.push(href);
         });
-
-        // Unique links nikalna aur top 3 return karna
         return [...new Set(foundLinks)].slice(0, 5);
       });
 
       const finalResults: LocationResponseDto[] = [];
-
-      // 2. Deep Dive into each business link
       for (const link of links) {
         const newPage = await context.newPage();
-        newPage.on('console', (msg) => {
-          console.log(`🌐 [BROWSER LOG]: ${msg.text()}`);
-        });
         try {
           await newPage.goto(link, {
             waitUntil: 'load',
@@ -101,8 +73,6 @@ export class N49ScraperService {
           await page.waitForTimeout(1000);
 
           const extractedData = await newPage.evaluate(() => {
-            // N49 specific selectors
-
             const bizName =
               document.querySelector('h1, .biz-name')?.textContent || '-';
 
@@ -130,10 +100,9 @@ export class N49ScraperService {
             source: 'N49',
             timestamp: new Date().toISOString(),
           });
-
           return finalResults;
         } catch (e) {
-          console.log(`❌ [N49] Error scraping deep link: ${link}`, e);
+          alert(`❌ [N49] Error scraping deep link: ${link}\n${e}`);
         } finally {
           await newPage.close();
         }
@@ -146,7 +115,7 @@ export class N49ScraperService {
 
       return finalResults;
     } catch (error) {
-      console.error('❌ [N49] Global Scraper Error:', error);
+      console.log(`❌ [N49] Global Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();

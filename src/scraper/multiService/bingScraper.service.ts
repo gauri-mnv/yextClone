@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
@@ -20,7 +21,6 @@ export class BingScraperService {
     const page = await context.newPage();
 
     try {
-      // Bing search query for specific business and location
       const searchQuery = encodeURIComponent(`${name} ${location}`);
       const searchUrl = `https://www.bing.com/search?q=${searchQuery}`;
 
@@ -31,11 +31,9 @@ export class BingScraperService {
           timeout: 5000,
         });
       } catch (e) {
-        console.log('⚠️ Bing took too long, trying to scrape anyway...', e);
+        console.warn(`⚠️ Bing took too long, trying to scrape anyway... ${e}`);
       }
-      // await page.waitForSelector('#b_results', { timeout: 10000 });
       const results = await page.evaluate(() => {
-        // Bing organic search results usually sit in 'li.b_algo'
         const items = Array.from(document.querySelectorAll('li.b_algo'));
 
         return items
@@ -51,8 +49,6 @@ export class BingScraperService {
             const link = nameEl.href || '';
 
             const snippet = snippetEl?.textContent || ' ';
-
-            // Basic logic to extract phone from snippet if present
             const phoneMatch = snippet.match(
               /\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})/,
             );
@@ -76,7 +72,7 @@ export class BingScraperService {
         timestamp: new Date().toISOString(),
       }));
     } catch (error) {
-      console.error('❌ Bing Scraper Error:', error);
+      console.error(`❌ Bing Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();
