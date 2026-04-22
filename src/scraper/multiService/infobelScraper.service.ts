@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -10,10 +10,10 @@ chromium.use(StealthPlugin());
 
 @Injectable()
 export class InfobelScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeInfobel(
     targetName: string,
@@ -37,10 +37,12 @@ export class InfobelScraperService {
       if (parts.length >= 2) {
         city = parts[1];
       }
+
+      // Cleanup: Agar city me still "Market St" jaisa kuch hai, toh regex use karein
+
       await page.goto('https://www.infobel.com/en/canada', {
         waitUntil: 'domcontentloaded',
       });
-
       await page.waitForSelector('#search-term-input-header', {
         timeout: 10000,
       });
@@ -51,13 +53,14 @@ export class InfobelScraperService {
 
       await page.waitForSelector('.customer-box', { timeout: 45000 });
 
-      // page.on('console', (msg) => {
-      //   console.log(`🌐 [BROWSER]: ${msg.text()}`);
-      // });
+      // 3. List me se EXACT Business Name find karein
+      page.on('console', (msg) => {
+        // Aap isme prefix bhi laga sakte ho taaki pehchan sako ki ye browser ka log hai
+        console.log(`🌐 [BROWSER]: ${msg.text()}`);
+      });
       const businessUrl = await page.evaluate((name) => {
         const items = Array.from(document.querySelectorAll('.customer-box'));
         const target = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-
         // Name check logic
         const match = items.find((item) => {
           const foundName =
@@ -68,10 +71,10 @@ export class InfobelScraperService {
             .replace(/[^a-z0-9]/g, ''); // Sab alphanumeric clean karo
 
           return (
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             cleanFoundName.includes(target) || target.includes(cleanFoundName)
           );
         });
-
         return match
           ? (match.querySelector('a.customerName h2 a') as HTMLAnchorElement)
               ?.href
@@ -82,6 +85,7 @@ export class InfobelScraperService {
         return [];
       }
 
+      // 4. More Info (Detail Page) par jayein
       await page.goto(businessUrl, { waitUntil: 'networkidle' });
       const finalData = await page.evaluate((sourceUrl) => {
         return {
@@ -101,6 +105,7 @@ export class InfobelScraperService {
         };
       }, businessUrl);
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return [finalData];
     } catch (e) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions

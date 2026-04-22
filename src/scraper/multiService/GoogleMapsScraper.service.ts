@@ -2,16 +2,17 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-import { Repository } from 'typeorm';
-import { Location } from '../location.entity';
-import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class GoogleMapsScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
+  //google scraper
   async scrapeGoogleMaps(query: string): Promise<LocationResponseDto[]> {
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
@@ -42,7 +43,9 @@ export class GoogleMapsScraperService {
         await browser.close();
         return [];
       }
+
       const scrapedData = await page.evaluate(() => {
+        // 1. Check karein agar direct Place Card khula hai (Exact match)
         const exactName = document.querySelector('h1.DUwDvf')?.textContent;
         if (exactName) {
           // Agar direct page khula hai, toh yahan se NAP uthayein
@@ -83,14 +86,14 @@ export class GoogleMapsScraperService {
 
       for (const item of scrapedData) {
         if (item.name !== 'N/A') {
-          const newLoc = this.locationRepo.create({
-            name: item.name,
-            address: item.address,
-            phone: item.phone,
-            locationLink: item.locationLink || '',
-          });
+          // const newLoc = this.locationRepo.create({
+          //   name: item.name,
+          //   address: item.address,
+          //   phone: item.phone,
+          //   locationLink: item.locationLink || '',
+          // });
 
-          await this.locationRepo.save(newLoc);
+          // await this.locationRepo.save(newLoc);
           finalResults.push({
             name: item.name,
             address: item.address,
@@ -125,7 +128,6 @@ export class GoogleMapsScraperService {
   //       await this.locationRepo.save(newLocation);
   //     } else {
   //       // 3. (Optional) Agar hai, toh sirf data update kar sakte hain
-  //       //console.log(`⏭️ Skipping duplicate: ${item.name}`);
   //       await this.locationRepo.update(existing.id, item);
   //     }
   //   }

@@ -1,4 +1,4 @@
-import { IsString, MinLength, IsNotEmpty } from 'class-validator';
+import { IsString, MinLength, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class ScrapeRequestDto {
   // @IsString()
@@ -14,7 +14,6 @@ export class ScrapeRequestDto {
   name: string;
 
   @IsString()
-  @IsNotEmpty()
-  @MinLength(2, { message: 'Location is too short' })
+  @IsOptional()
   location: string;
 }

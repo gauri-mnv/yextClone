@@ -2,16 +2,16 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-import { Location } from '../location.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
 
 @Injectable()
 export class MapQuestScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeMapQuest(query: string): Promise<LocationResponseDto[]> {
     const browser = await chromium.launch({
@@ -33,11 +33,9 @@ export class MapQuestScraperService {
     try {
       // MapQuest Search URL Pattern: /search/results?query=[BusinessName]&location=[Location]
       const searchQuery = encodeURIComponent(query);
-      // const searchUrl = `https://www.mapquest.com/search/results?query=${searchQuery}&location=${searchLocation}`;
       const searchUrl = `https://www.mapquest.com/search/${searchQuery}`;
 
       await page.goto(searchUrl, {
-        // waitUntil: 'networkidle',
         waitUntil: 'domcontentloaded',
         timeout: 40000,
       });
@@ -104,6 +102,7 @@ export class MapQuestScraperService {
               const href = phoneEl.getAttribute('href');
               phone = href ? href.replace('tel:', '') : '-';
             }
+            // // 3. Phone: Screenshot mein niche 'tel' link dikh raha hai
 
             return {
               name: name.trim(),
@@ -112,7 +111,14 @@ export class MapQuestScraperService {
               link: link,
             };
           }, link);
-
+          console.log({
+            name: extractedData.name,
+            address: extractedData.address,
+            phone: extractedData.phone,
+            locationLink: link,
+            source: 'MapQuest',
+            timestamp: new Date().toISOString(),
+          });
           finalResults.push({
             name: extractedData.name,
             address: extractedData.address,
@@ -128,12 +134,10 @@ export class MapQuestScraperService {
         }
       }
 
-      if (finalResults.length > 0) {
-        return finalResults;
-        // await this.saveResults(finalResults, query);
-      }
-
-      return [];
+      // if (finalResults.length > 0) {
+      //   await this.saveResults(finalResults, query);
+      // }
+      return finalResults;
     } catch (error) {
       alert(`❌ [MapQuest] Global Scraper Error: ${error}`);
       return [];
@@ -142,7 +146,7 @@ export class MapQuestScraperService {
     }
   }
 
-  //  Save Logic
+  // Same Robust Save Logic
   // async saveResults(results: LocationResponseDto[], targetName: string) {
   //   const searchKeywords = targetName.toLowerCase().split(' ');
   //   for (const item of results) {

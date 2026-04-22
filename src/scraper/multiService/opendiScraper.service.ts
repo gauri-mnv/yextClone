@@ -2,17 +2,17 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-import { Location } from '../location.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
 import { getPincodeFromAddress } from '../utils/location-helper';
 
 @Injectable()
 export class OpendiScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeOpendi(
     name: string,
@@ -33,7 +33,6 @@ export class OpendiScraperService {
     try {
       // Opendi Search URL Pattern: opendi.ca/s/[BusinessName]/[Location]
       const searchQuery = encodeURIComponent(name);
-      //   const searchLocation = encodeURIComponent(location);
       const pincode = await getPincodeFromAddress(page, location);
       const searchLocation = encodeURIComponent(pincode);
       const searchUrl = `https://www.opendi.ca/search?what=${searchQuery}&where=${searchLocation}`;
@@ -126,11 +125,11 @@ export class OpendiScraperService {
         }
       }
 
-      if (finalResults.length > 0) {
-        //   await this.saveResults(finalResults, name);
-        return finalResults;
-      }
-      return [];
+      // if (finalResults.length > 0) {
+      //   await this.saveResults(finalResults, name);
+      // }
+
+      return finalResults;
     } catch (error) {
       alert(`❌ [Opendi] Global Scraper Error: ${error}`);
       return [];

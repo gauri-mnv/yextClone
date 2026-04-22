@@ -2,16 +2,16 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-import { Location } from '../location.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
 
 @Injectable()
 export class N49ScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeN49(
     name: string,
@@ -19,11 +19,7 @@ export class N49ScraperService {
   ): Promise<LocationResponseDto[]> {
     const browser = await chromium.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        // '--disable-dev-shm-usage',
-      ],
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
     const context = await browser.newContext({
@@ -38,7 +34,6 @@ export class N49ScraperService {
         location.split(',')[1]?.trim() || location.split(' ').pop() || location;
       const searchQuery = encodeURIComponent(name);
       const searchLocation = encodeURIComponent(cityOrZip);
-      // const searchUrl = `https://www.n49.com/search/${searchLocation}/${searchQuery}/`;
       const searchUrl = `https://www.n49.com/search/${searchQuery}/42041/${searchLocation}/`;
 
       await page.goto(searchUrl, {
@@ -113,7 +108,7 @@ export class N49ScraperService {
         }
       }
 
-      // // 3. Save to Database
+      // 3. Save to Database
       // if (finalResults.length > 0) {
       //   await this.saveResults(finalResults, name);
       // }
@@ -139,7 +134,7 @@ export class N49ScraperService {
 
   //     // 50% Match Logic
   //     if (matchCount < Math.ceil(searchKeywords.length / 2)) {
-
+  //       console.log(`🚫 [N49] Filtering out unrelated: ${item.name}`);
   //       continue;
   //     }
 
@@ -148,7 +143,7 @@ export class N49ScraperService {
   //     });
   //     if (!existing) {
   //       await this.locationRepo.save(this.locationRepo.create(item));
-
+  //       //console.log(`💾 [N49] Saved: ${item.name}`);
   //     }
   //   }
   // }

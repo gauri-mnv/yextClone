@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright-extra';
 
 @Injectable()
 export class ProfileCanadaScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeProfileCanada(
     name: string,
@@ -51,7 +51,9 @@ export class ProfileCanadaScraperService {
 
         const foundLink = allLinks.find(
           (a) =>
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             a.textContent?.toLowerCase().includes(lowerName) ||
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             a.parentElement?.textContent?.toLowerCase().includes(lowerName),
         );
 

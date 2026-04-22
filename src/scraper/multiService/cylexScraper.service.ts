@@ -1,32 +1,31 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
-import { Location } from '../location.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
 import { chromium } from 'playwright-extra';
 
 @Injectable()
 export class CylexScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeCylex(
     name: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     location: string,
   ): Promise<LocationResponseDto[]> {
-    // const stealth = require('puppeteer-extra-plugin-stealth')();
-    // chromium.use(stealth);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const stealth = require('puppeteer-extra-plugin-stealth')();
+    chromium.use(stealth);
     const browser = await chromium.launch({
       headless: true,
       args: [
         '--disable-blink-features=AutomationControlled',
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        // WebGL aur GPU verification ko stable banane ke liye
         '--use-gl=swiftshader',
         '--disable-webgl',
       ],
@@ -75,6 +74,7 @@ export class CylexScraperService {
         state: 'visible',
         timeout: 30000,
       });
+      // 🔥 Step 1: Wait for Cloudflare to clear automatically
       await page
         .waitForFunction(
           () => {
@@ -127,6 +127,68 @@ export class CylexScraperService {
           .filter((l) => l.includes('/company/'))
           .slice(0, 3);
       });
+
+      // FIXED SELECTOR: Removed extra comma and added more reliable targets
+      //   const successSelector =
+      //     '.search-results, h4.bold, .addr, button.btn-outline-secondary';
+
+      //   try {
+      //     await page.waitForSelector(successSelector, {
+      //       timeout: 20000,
+      //       state: 'visible',
+      //     });
+      //   } catch (e) {
+      //     const bodyText = await page.innerText('body');
+      //     if (
+      //       bodyText.includes('Cloudflare') ||
+      //       bodyText.includes('Access Denied')
+      //     ) {
+      //       console.log(
+      //         '🛡️ [Cylex] Cloudflare challenge detected. Waiting 10s for auto-solve...',
+      //         e,
+      //       );
+      //       await page.waitForTimeout(10000); // Give Cloudflare time to redirect
+      //     }
+      //   }
+
+      // 4. Extracting Links
+      //   const links = await page.evaluate(() => {
+      //     const results: string[] = [];
+
+      //     // Method A: Title Links
+      //     const titleLinks = Array.from(
+      //       document.querySelectorAll('.h4.bold a, .search-results-title'),
+      //     );
+      //     titleLinks.forEach((a) => {
+      //       const href = (a as HTMLAnchorElement).href;
+      //       if (href && href.includes('/company/')) results.push(href);
+      //     });
+
+      //     // Method B: More Info Buttons (image_f6f9a9 reference)
+      //     const moreInfoButtons = Array.from(
+      //       document.querySelectorAll(
+      //         'a.btn-outline-secondary, button.btn-outline-secondary',
+      //       ),
+      //     );
+      //     moreInfoButtons.forEach((btn) => {
+      //       if (btn.tagName === 'A') {
+      //         results.push((btn as HTMLAnchorElement).href);
+      //       } else {
+      //         const onclick = btn.getAttribute('onclick') || '';
+      //         const match = onclick.match(/'([^']+)'/);
+      //         if (match && match[1]) {
+      //           const cleanUrl = match[1].startsWith('http')
+      //             ? match[1]
+      //             : `https://www.cylex-canada.ca${match[1]}`;
+      //           results.push(cleanUrl);
+      //         }
+      //       }
+      //     });
+
+      //     return [...new Set(results)]
+      //       .filter((l) => l.includes('cylex-canada.ca'))
+      //       .slice(0, 5);
+      //   });
 
       const finalResults: LocationResponseDto[] = [];
 
