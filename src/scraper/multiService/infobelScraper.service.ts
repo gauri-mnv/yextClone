@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -10,10 +10,10 @@ chromium.use(StealthPlugin());
 
 @Injectable()
 export class InfobelScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeInfobel(
     targetName: string,
@@ -41,13 +41,11 @@ export class InfobelScraperService {
       }
 
       // Cleanup: Agar city me still "Market St" jaisa kuch hai, toh regex use karein
-      console.log(`🔍 [Infobel] Searching for "Dental Clinics" in ${city}...`);
 
       await page.goto('https://www.infobel.com/en/canada', {
         waitUntil: 'domcontentloaded',
         // timeout: 60000,
       });
-      console.log(`⌨️ Filling: Dental Clinics in ${city}`);
       await page.waitForSelector('#search-term-input-header', {
         timeout: 10000,
       });
@@ -63,7 +61,6 @@ export class InfobelScraperService {
       await page.waitForSelector('.customer-box', { timeout: 45000 });
 
       // 3. List me se EXACT Business Name find karein
-      console.log(`🎯 Looking for exact match: ${targetName}`);
       page.on('console', (msg) => {
         // Aap isme prefix bhi laga sakte ho taaki pehchan sako ki ye browser ka log hai
         console.log(`🌐 [BROWSER]: ${msg.text()}`);
@@ -71,7 +68,6 @@ export class InfobelScraperService {
       const businessUrl = await page.evaluate((name) => {
         const items = Array.from(document.querySelectorAll('.customer-box'));
         const target = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        console.log(`--- Starting Matching for: ${target} ---`);
         // Name check logic
         const match = items.find((item) => {
           const foundName =
@@ -80,14 +76,12 @@ export class InfobelScraperService {
             .toLowerCase()
             .replace(/^\d+\.\s*/, '') // Shuruat ka "6. " hatao
             .replace(/[^a-z0-9]/g, ''); // Sab alphanumeric clean karo
-          console.log(
-            `Checking Item: "${foundName}" | Cleaned: "${cleanFoundName}"`,
-          );
+
           return (
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             cleanFoundName.includes(target) || target.includes(cleanFoundName)
           );
         });
-        console.log(`--- Matching Completed ---`, match);
         return match
           ? (match.querySelector('a.customerName h2 a') as HTMLAnchorElement)
               ?.href
@@ -95,12 +89,10 @@ export class InfobelScraperService {
       }, targetName);
 
       if (!businessUrl) {
-        console.log('❌ [Infobel] Exact business name list not found .');
         return [];
       }
 
       // 4. More Info (Detail Page) par jayein
-      console.log('📄 [Infobel] Opening detail page...');
       await page.goto(businessUrl, { waitUntil: 'networkidle' });
 
       // 5. Detail Page se saara data extract karein
@@ -122,7 +114,7 @@ export class InfobelScraperService {
         };
       }, businessUrl);
 
-      console.log(`✅ [Infobel] Success: Extracted data for ${finalData.name}`);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return [finalData];
     } catch (e) {
       console.error('❌ [Infobel] Error:', e);

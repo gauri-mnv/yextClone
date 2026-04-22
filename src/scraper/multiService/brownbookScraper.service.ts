@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -9,10 +9,10 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 chromium.use(StealthPlugin());
 @Injectable()
 export class BrownbookScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
   async scrapeBrownbook(
     name: string,
     location: string,
@@ -168,6 +168,7 @@ export class BrownbookScraperService {
           );
           // Name matching logic taaki sahi business mile
           const match = links.find((a) =>
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             a.textContent?.toLowerCase().includes(targetName.toLowerCase()),
           );
           return match ? (match as HTMLAnchorElement).href : null;
@@ -201,6 +202,7 @@ export class BrownbookScraperService {
           }, businessLink);
 
           console.log(`✅ [Brownbook] Extracted: ${finalData.name}`);
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
           return [finalData];
         } else {
           console.log(

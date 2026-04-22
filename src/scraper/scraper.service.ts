@@ -2,46 +2,41 @@ import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from './dto/location-response.dto';
 import { GoogleMapsScraperService } from './multiService/GoogleMapsScraper.service';
 import { YelpScraperService } from '../scraper/multiService/yelpScaper.service';
-// import { BingScraperService } from '../scraper/multiService/bingScraper.service';
-// import { InstagramScraperService } from '../scraper/multiService/instagramScraper.service';
 import { N49ScraperService } from '../scraper/multiService/n49Scraper.service';
 import { MapQuestScraperService } from '../scraper/multiService/mapquestScraper.service';
 import { OpendiScraperService } from '../scraper/multiService/opendiScraper.service';
-// import { CylexScraperService } from './multiService/cylexScraper.service';
 import { ProfileCanadaScraperService } from './multiService/profileCanada.service';
-// import { BrownbookScraperService } from './multiService/brownbookScraper.service';
-// import { InfobelScraperService } from './multiService/infobelScraper.service';
-
-import { Location } from './location.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InstagramScraperService } from './demoService/instagramScrapper.service';
+import { WhereToScraperService } from './demoService/wheretoScraper.service';
+import { HotfrogScraperService } from './demoService/hotfrogScraper.service';
+import { FacebookScraperService } from './demoService/facebookScraper.service';
+// import { Location } from './location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
 
 @Injectable()
 export class ScraperService {
   constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
     private googleMapsScraperService: GoogleMapsScraperService,
     private yelpScraperService: YelpScraperService,
     private n49Service: N49ScraperService,
     private mapquestService: MapQuestScraperService,
     private opendiService: OpendiScraperService,
     private profileCanadaService: ProfileCanadaScraperService,
-
-    // private cylexService: CylexScraperService,
-    // private bingService: BingScraperService,
-    // private instagramService: InstagramScraperService,
+    private instagramService: InstagramScraperService,
+    private wheretoScraperService: WhereToScraperService,
+    private hotfrogScraperService: HotfrogScraperService,
     // private brownbookScraperService: BrownbookScraperService,
-    // private infobelScraperService: InfobelScraperService,
+    private facebookScraperService: FacebookScraperService,
   ) {}
 
-  //combine
   async scrapeAllPlatforms(
     name: string,
     location: string = '',
   ): Promise<LocationResponseDto[]> {
-    await this.locationRepo.clear();
-    // console.log(`🚀 Starting Multi-Platform Scraping for: ${name}`);
+    // await this.locationRepo.clear();
 
     const [
       googleData,
@@ -50,9 +45,10 @@ export class ScraperService {
       mapquestData,
       opendiData,
       profileCanadaData,
-      // cylexData,
-      // brownbookData,
-      // infobelData,
+      instagramData,
+      wheretoData,
+      hotfrogData,
+      facebookData,
     ] = await Promise.all([
       this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
       this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
@@ -60,9 +56,10 @@ export class ScraperService {
       this.mapquestService.scrapeMapQuest(`${name} ${location}`),
       this.opendiService.scrapeOpendi(name, location),
       this.profileCanadaService.scrapeProfileCanada(name, location),
-      // this.cylexService.scrapeCylex(name, location),
-      // this.brownbookScraperService.scrapeBrownbook(name, location),
-      // this.infobelScraperService.scrapeInfobel(name, location),
+      this.instagramService.scrapeInstagram(name),
+      this.wheretoScraperService.scrapeWhereTo(name, location),
+      this.hotfrogScraperService.scrapeHotfrog(name, location),
+      this.facebookScraperService.scrapeFacebook(name),
     ]);
     const combinedData = [
       ...googleData,
@@ -71,23 +68,11 @@ export class ScraperService {
       ...mapquestData,
       ...opendiData,
       ...profileCanadaData,
-      // ...cylexData,
-      // ...brownbookData,
-      // ...infobelData,
+      ...instagramData,
+      ...wheretoData,
+      ...hotfrogData,
+      ...facebookData,
     ];
-    console.log(
-      `📊 Total Results Found: ${combinedData.length} 
-      (Google: ${googleData.length}, 
-      Yelp: ${yelpData.length},
-      mapquestData:${mapquestData.length},
-     N49Scraper:${N49ScraperData.length},
-      Opendi:${opendiData.length},
-         profileCanadaService:${profileCanadaData.length},
-
-        Cylex:${0},
-       brownbookData:${0},
-       infobelData:${0}`,
-    );
 
     return combinedData;
   }

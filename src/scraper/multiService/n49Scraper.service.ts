@@ -1,30 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-import { Location } from '../location.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
 
 @Injectable()
 export class N49ScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeN49(
     name: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    //console.log(`\n🚀 [N49] Starting Scrape for: ${name} in ${location}`);
-
     const browser = await chromium.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        // '--disable-dev-shm-usage',
-      ],
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
     const context = await browser.newContext({
@@ -40,15 +34,7 @@ export class N49ScraperService {
       // N49 Search URL Structure
       const searchQuery = encodeURIComponent(name);
       const searchLocation = encodeURIComponent(cityOrZip);
-      // const searchUrl = `https://www.n49.com/search/${searchLocation}/${searchQuery}/`;
       const searchUrl = `https://www.n49.com/search/${searchQuery}/42041/${searchLocation}/`;
-
-      //console.log(`🔗 [N49] Navigating to Search: ${searchUrl}`);
-      // await page.goto(searchUrl, {
-      //   waitUntil: 'domcontentloaded',
-      //   // waitUntil: 'load',
-      //   timeout: 30000,
-      // });
 
       await page.goto(searchUrl, {
         waitUntil: 'networkidle', // 'domcontentloaded' se behtar hai dynamic content ke liye
@@ -99,8 +85,6 @@ export class N49ScraperService {
         return [...new Set(foundLinks)].slice(0, 5);
       });
 
-      // console.log(`✅ [N49] Found ${links.length} potential links.`);
-
       const finalResults: LocationResponseDto[] = [];
 
       // 2. Deep Dive into each business link
@@ -110,8 +94,6 @@ export class N49ScraperService {
           console.log(`🌐 [BROWSER LOG]: ${msg.text()}`);
         });
         try {
-          // console.log(`\n--- 🕵️ [N49] Deep Searching: ${link} ---`);
-
           await newPage.goto(link, {
             waitUntil: 'load',
             timeout: 20000,
@@ -123,7 +105,6 @@ export class N49ScraperService {
 
             const bizName =
               document.querySelector('h1, .biz-name')?.textContent || '-';
-            // console.log('Inside browser, found name:', bizName);
 
             const phoneEl = document.querySelector(
               '.biz-phone, [href^="tel:"]',
@@ -140,14 +121,6 @@ export class N49ScraperService {
               address: address.trim().replace(/\s+/g, ' '),
             };
           });
-          console.log(`New page evaluated:${newPage.url()}`);
-
-          // 🔥 PUSH SE PEHLE CONSOLE LOG
-          // console.log(`📊 [N49] Extracted:`);
-          // console.log(`   Name:  ${extractedData.name}`);
-          // console.log(`   Phone: ${extractedData.phone}`);
-          // console.log(`   address: ${extractedData.address}`);
-          // console.log(`   link: ${newPage.url()}`);
 
           finalResults.push({
             name: extractedData.name !== '' ? extractedData.name : '-',
@@ -158,7 +131,6 @@ export class N49ScraperService {
             timestamp: new Date().toISOString(),
           });
 
-          // console.log(`✅ [N49] Added to final results:`, finalResults);
           return finalResults;
         } catch (e) {
           console.log(`❌ [N49] Error scraping deep link: ${link}`, e);
@@ -168,9 +140,9 @@ export class N49ScraperService {
       }
 
       // 3. Save to Database
-      if (finalResults.length > 0) {
-        await this.saveResults(finalResults, name);
-      }
+      // if (finalResults.length > 0) {
+      //   await this.saveResults(finalResults, name);
+      // }
 
       return finalResults;
     } catch (error) {
@@ -178,33 +150,32 @@ export class N49ScraperService {
       return [];
     } finally {
       await browser.close();
-      //console.log('--- 🏁 N49 SCRAPER FINISHED ---');
     }
   }
 
-  async saveResults(results: LocationResponseDto[], targetName: string) {
-    const searchKeywords = targetName.toLowerCase().split(' ');
-    for (const item of results) {
-      if (!item.name || item.name === '-') continue;
+  // async saveResults(results: LocationResponseDto[], targetName: string) {
+  //   const searchKeywords = targetName.toLowerCase().split(' ');
+  //   for (const item of results) {
+  //     if (!item.name || item.name === '-') continue;
 
-      const itemName = item.name.toLowerCase();
-      const matchCount = searchKeywords.filter((key) =>
-        itemName.includes(key),
-      ).length;
+  //     const itemName = item.name.toLowerCase();
+  //     const matchCount = searchKeywords.filter((key) =>
+  //       itemName.includes(key),
+  //     ).length;
 
-      // 50% Match Logic
-      if (matchCount < Math.ceil(searchKeywords.length / 2)) {
-        console.log(`🚫 [N49] Filtering out unrelated: ${item.name}`);
-        continue;
-      }
+  //     // 50% Match Logic
+  //     if (matchCount < Math.ceil(searchKeywords.length / 2)) {
+  //       console.log(`🚫 [N49] Filtering out unrelated: ${item.name}`);
+  //       continue;
+  //     }
 
-      const existing = await this.locationRepo.findOne({
-        where: { locationLink: item.locationLink },
-      });
-      if (!existing) {
-        await this.locationRepo.save(this.locationRepo.create(item));
-        //console.log(`💾 [N49] Saved: ${item.name}`);
-      }
-    }
-  }
+  //     const existing = await this.locationRepo.findOne({
+  //       where: { locationLink: item.locationLink },
+  //     });
+  //     if (!existing) {
+  //       await this.locationRepo.save(this.locationRepo.create(item));
+  //       //console.log(`💾 [N49] Saved: ${item.name}`);
+  //     }
+  //   }
+  // }
 }

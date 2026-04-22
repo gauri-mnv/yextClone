@@ -1,22 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-import { Location } from '../location.entity';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
+// import { Location } from '../location.entity';
+// import { Repository } from 'typeorm';
+// import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class BingScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
   async scrapeBing(
     name: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    console.log(`🔎 Bing Search Started for: ${name} in ${location}`);
-
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({});
     const page = await context.newPage();
@@ -25,7 +23,6 @@ export class BingScraperService {
       // Bing search query for specific business and location
       const searchQuery = encodeURIComponent(`${name} ${location}`);
       const searchUrl = `https://www.bing.com/search?q=${searchQuery}`;
-      // console.log(`🔗 Navigating to Bing: ${searchUrl}`);
 
       await page.goto(searchUrl, { waitUntil: 'load', timeout: 30000 });
       try {
@@ -73,8 +70,6 @@ export class BingScraperService {
           .filter((i) => i !== null);
       });
 
-      // console.log(`✅ Bing found ${results.length} items`);
-
       return results.map((item) => ({
         ...item,
         source: 'Bing',
@@ -88,31 +83,30 @@ export class BingScraperService {
     }
   }
 
-  async saveResults(results: LocationResponseDto[], targetName: string) {
-    const searchKeywords = targetName.toLowerCase().split(' ');
+  // async saveResults(results: LocationResponseDto[], targetName: string) {
+  //   const searchKeywords = targetName.toLowerCase().split(' ');
 
-    for (const item of results) {
-      if (!item.name) continue;
+  //   for (const item of results) {
+  //     if (!item.name) continue;
 
-      // 2. Strict Match Check: Kam se kam 2 keywords match hone chahiye
-      const itemName = item.name.toLowerCase();
-      const matchCount = searchKeywords.filter((key) =>
-        itemName.includes(key),
-      ).length;
-      if (matchCount < Math.ceil(searchKeywords.length / 2)) {
-        // console.log(`🚫 Filtering out unrelated result: ${item.name}`);
-        continue;
-      }
-      const existing = await this.locationRepo.findOne({
-        where: { locationLink: item.locationLink },
-      });
-      if (!existing) {
-        const newLocation = this.locationRepo.create(item);
-        await this.locationRepo.save(newLocation);
-      } else {
-        console.log(`⏭️ Skipping duplicate: ${item.name}`);
-        await this.locationRepo.update(existing.id, item);
-      }
-    }
-  }
+  //     // 2. Strict Match Check: Kam se kam 2 keywords match hone chahiye
+  //     const itemName = item.name.toLowerCase();
+  //     const matchCount = searchKeywords.filter((key) =>
+  //       itemName.includes(key),
+  //     ).length;
+  //     if (matchCount < Math.ceil(searchKeywords.length / 2)) {
+  //       // console.log(`🚫 Filtering out unrelated result: ${item.name}`);
+  //       continue;
+  //     }
+  //     const existing = await this.locationRepo.findOne({
+  //       where: { locationLink: item.locationLink },
+  //     });
+  //     if (!existing) {
+  //       const newLocation = this.locationRepo.create(item);
+  //       await this.locationRepo.save(newLocation);
+  //     } else {
+  //       await this.locationRepo.update(existing.id, item);
+  //     }
+  //   }
+  // }
 }

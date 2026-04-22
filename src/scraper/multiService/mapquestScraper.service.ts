@@ -1,20 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-import { Location } from '../location.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
 
 @Injectable()
 export class MapQuestScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeMapQuest(query: string): Promise<LocationResponseDto[]> {
-    //console.log(`\n🗺️ [MapQuest] Starting Scrape for: ${query} `);
-
     const browser = await chromium.launch({
       headless: true,
       args: [
@@ -34,13 +32,9 @@ export class MapQuestScraperService {
     try {
       // MapQuest Search URL Pattern: /search/results?query=[BusinessName]&location=[Location]
       const searchQuery = encodeURIComponent(query);
-      // const searchUrl = `https://www.mapquest.com/search/results?query=${searchQuery}&location=${searchLocation}`;
       const searchUrl = `https://www.mapquest.com/search/${searchQuery}`;
 
-      //console.log(`🔗 [MapQuest] Navigating to: ${searchUrl}`);
-
       await page.goto(searchUrl, {
-        // waitUntil: 'networkidle', // Zaruri hai kyunki MapQuest maps aur pins load karta hai
         waitUntil: 'domcontentloaded',
         timeout: 40000,
       });
@@ -48,9 +42,6 @@ export class MapQuestScraperService {
 
       // Results container ke aane ka wait karein
       try {
-        // await page.waitForSelector('.result-item, .listing', {
-        //   timeout: 20000,
-        // });
         await page.waitForTimeout(3000);
       } catch (e) {
         console.log(
@@ -101,8 +92,6 @@ export class MapQuestScraperService {
           .slice(0, 6);
       });
 
-      //console.log(`✅ [MapQuest] Found ${links.length} potential links.`);
-
       const finalResults: LocationResponseDto[] = [];
 
       // 2. Deep Dive Loop
@@ -144,10 +133,6 @@ export class MapQuestScraperService {
               phone = href ? href.replace('tel:', '') : '-';
             }
             // // 3. Phone: Screenshot mein niche 'tel' link dikh raha hai
-            // const phoneEl = document.querySelector('a[href^="tel:"]');
-            // const phone = phoneEl
-            //   ? phoneEl.getAttribute('href')?.replace('tel:', '')
-            //   : '-';
 
             return {
               name: name.trim(),
@@ -156,14 +141,14 @@ export class MapQuestScraperService {
               link: link,
             };
           }, link);
-
-          // 🔥 PUSH SE PEHLE CONSOLE LOG (VS Code terminal mein dikhega)
-          // console.log(`📊 [MapQuest] Extracted Data:`);
-          // console.log(`   Name:    ${extractedData.name}`);
-          // console.log(`   Phone:   ${extractedData.phone}`);
-          // console.log(`   Address: ${extractedData.address}`);
-          // console.log(`   link: ${extractedData.link}`);
-
+          console.log({
+            name: extractedData.name,
+            address: extractedData.address,
+            phone: extractedData.phone,
+            locationLink: link,
+            source: 'MapQuest',
+            timestamp: new Date().toISOString(),
+          });
           finalResults.push({
             name: extractedData.name,
             address: extractedData.address,
@@ -179,40 +164,37 @@ export class MapQuestScraperService {
         }
       }
 
-      if (finalResults.length > 0) {
-        await this.saveResults(finalResults, query);
-      }
-
+      // if (finalResults.length > 0) {
+      //   await this.saveResults(finalResults, query);
+      // }
       return finalResults;
     } catch (error) {
       console.error('❌ [MapQuest] Global Scraper Error:', error);
       return [];
     } finally {
       await browser.close();
-      //console.log('--- 🏁 MAPQUEST SCRAPER FINISHED ---');
     }
   }
 
   // Same Robust Save Logic
-  async saveResults(results: LocationResponseDto[], targetName: string) {
-    const searchKeywords = targetName.toLowerCase().split(' ');
-    for (const item of results) {
-      if (!item.name || item.name === '-') continue;
+  // async saveResults(results: LocationResponseDto[], targetName: string) {
+  //   const searchKeywords = targetName.toLowerCase().split(' ');
+  //   for (const item of results) {
+  //     if (!item.name || item.name === '-') continue;
 
-      const itemName = item.name.toLowerCase();
-      const matchCount = searchKeywords.filter((key) =>
-        itemName.includes(key),
-      ).length;
+  //     const itemName = item.name.toLowerCase();
+  //     const matchCount = searchKeywords.filter((key) =>
+  //       itemName.includes(key),
+  //     ).length;
 
-      if (matchCount < Math.ceil(searchKeywords.length / 2)) continue;
+  //     if (matchCount < Math.ceil(searchKeywords.length / 2)) continue;
 
-      const existing = await this.locationRepo.findOne({
-        where: { locationLink: item.locationLink },
-      });
-      if (!existing) {
-        await this.locationRepo.save(this.locationRepo.create(item));
-        //console.log(`💾 [MapQuest] Saved: ${item.name}`);
-      }
-    }
-  }
+  //     const existing = await this.locationRepo.findOne({
+  //       where: { locationLink: item.locationLink },
+  //     });
+  //     if (!existing) {
+  //       await this.locationRepo.save(this.locationRepo.create(item));
+  //     }
+  //   }
+  // }
 }

@@ -1,27 +1,23 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-require-imports */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
-import { Location } from '../location.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
 import { chromium } from 'playwright-extra';
-// import axios from 'axios';
 
 @Injectable()
 export class CylexScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeCylex(
     name: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     location: string,
   ): Promise<LocationResponseDto[]> {
-    console.log(`\n🔍 [Cylex] Starting Scrape for: ${name}`);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const stealth = require('puppeteer-extra-plugin-stealth')();
     chromium.use(stealth);
     const browser = await chromium.launch({
@@ -30,7 +26,6 @@ export class CylexScraperService {
         '--disable-blink-features=AutomationControlled',
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        // WebGL aur GPU verification ko stable banane ke liye
         '--use-gl=swiftshader',
         '--disable-webgl',
       ],
@@ -38,7 +33,6 @@ export class CylexScraperService {
         server: 'http://ca-residential-proxy:port',
       },
     });
-    console.log('location:', location);
     const context = await browser.newContext({
       userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
@@ -52,7 +46,6 @@ export class CylexScraperService {
     });
 
     try {
-      console.log(`🏠 [Cylex] Visiting Homepage...`);
       const searchQuery = name.replace(/\s+/g, '+');
       // Direct search ke bajaye home page par jayein
       await page.goto(
@@ -62,7 +55,6 @@ export class CylexScraperService {
           timeout: 60000,
         },
       );
-      console.log('⏳ [Cylex] Verifying Browser (Cloudflare)...');
 
       await Promise.race([
         page.waitForSelector('.search-results, .h4.bold', { timeout: 45000 }), // Success path
@@ -84,7 +76,6 @@ export class CylexScraperService {
         timeout: 30000,
       });
       // 🔥 Step 1: Wait for Cloudflare to clear automatically
-      console.log('⏳ [Cylex] Solving Cloudflare challenge...');
       await page
         .waitForFunction(
           () => {
@@ -108,7 +99,6 @@ export class CylexScraperService {
         timeout: 15000,
       });
 
-      console.log('⌨️ [Cylex] Typing business name...');
       await page.fill(searchInputSelector, name);
       await page.keyboard.press('Enter');
 
@@ -145,7 +135,6 @@ export class CylexScraperService {
           .slice(0, 3);
       });
 
-      console.log(`✅ [Cylex] Found ${links.length} links.`);
       // FIXED SELECTOR: Removed extra comma and added more reliable targets
       //   const successSelector =
       //     '.search-results, h4.bold, .addr, button.btn-outline-secondary';
@@ -208,14 +197,12 @@ export class CylexScraperService {
       //       .slice(0, 5);
       //   });
 
-      console.log(`✅ [Cylex] Found ${links.length} potential links.`);
       const finalResults: LocationResponseDto[] = [];
 
       // 5. Deep Dive with logic from image_f86a08.png
       for (const link of links) {
         const newPage = await context.newPage();
         try {
-          console.log(`\n--- 🕵️ [Cylex] Deep Searching: ${link} ---`);
           await newPage.goto(link, {
             waitUntil: 'domcontentloaded',
             timeout: 30000,

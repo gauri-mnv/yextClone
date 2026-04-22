@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-import { Repository } from 'typeorm';
-import { Location } from '../location.entity';
-import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class YelpScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeYelp(
     businessName: string,
@@ -143,20 +143,20 @@ export class YelpScraperService {
       // console.log('--- 🏁 YELP SCRAPER FINISHED ---');
     }
   }
-  async saveResults(results: LocationResponseDto[]) {
-    for (const item of results) {
-      // 1. Check karein kya ye link pehle se DB mein hai?
-      const existing = await this.locationRepo.findOne({
-        where: { locationLink: item.locationLink },
-      });
+  // async saveResults(results: LocationResponseDto[]) {
+  //   for (const item of results) {
+  //     // 1. Check karein kya ye link pehle se DB mein hai?
+  //     const existing = await this.locationRepo.findOne({
+  //       where: { locationLink: item.locationLink },
+  //     });
 
-      if (!existing) {
-        const newLocation = this.locationRepo.create(item);
-        await this.locationRepo.save(newLocation);
-      } else {
-        // console.log(`⏭️ Skipping duplicate: ${item.name}`);
-        await this.locationRepo.update(existing.id, item);
-      }
-    }
-  }
+  //     if (!existing) {
+  //       const newLocation = this.locationRepo.create(item);
+  //       await this.locationRepo.save(newLocation);
+  //     } else {
+  //       // console.log(`⏭️ Skipping duplicate: ${item.name}`);
+  //       await this.locationRepo.update(existing.id, item);
+  //     }
+  //   }
+  // }
 }

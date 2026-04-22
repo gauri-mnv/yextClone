@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-import { Location } from '../location.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
 
 @Injectable()
 export class InstagramScraperService {
-  constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
-  ) {}
+  constructor() {
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
+  }
 
   async scrapeInstagram(
     name: string,
@@ -114,9 +114,9 @@ export class InstagramScraperService {
         }
       }
 
-      if (finalResults.length > 0) {
-        await this.saveResults(finalResults, name);
-      }
+      // if (finalResults.length > 0) {
+      //   await this.saveResults(finalResults, name);
+      // }
 
       return finalResults;
     } catch (error) {
@@ -128,26 +128,26 @@ export class InstagramScraperService {
   }
 
   // Same robust save logic
-  async saveResults(results: LocationResponseDto[], targetName: string) {
-    const searchKeywords = targetName.toLowerCase().split(' ');
-    for (const item of results) {
-      if (!item.name || item.name === '-') continue;
+  // async saveResults(results: LocationResponseDto[], targetName: string) {
+  //   const searchKeywords = targetName.toLowerCase().split(' ');
+  //   for (const item of results) {
+  //     if (!item.name || item.name === '-') continue;
 
-      const itemName = item.name.toLowerCase();
-      const matchCount = searchKeywords.filter((key) =>
-        itemName.includes(key),
-      ).length;
+  //     const itemName = item.name.toLowerCase();
+  //     const matchCount = searchKeywords.filter((key) =>
+  //       itemName.includes(key),
+  //     ).length;
 
-      if (matchCount < Math.ceil(searchKeywords.length / 2)) continue;
+  //     if (matchCount < Math.ceil(searchKeywords.length / 2)) continue;
 
-      const existing = await this.locationRepo.findOne({
-        where: { locationLink: item.locationLink },
-      });
-      if (!existing) {
-        await this.locationRepo.save(this.locationRepo.create(item));
-      } else {
-        await this.locationRepo.update(existing.id, item);
-      }
-    }
-  }
+  //     const existing = await this.locationRepo.findOne({
+  //       where: { locationLink: item.locationLink },
+  //     });
+  //     if (!existing) {
+  //       await this.locationRepo.save(this.locationRepo.create(item));
+  //     } else {
+  //       await this.locationRepo.update(existing.id, item);
+  //     }
+  //   }
+  // }
 }
