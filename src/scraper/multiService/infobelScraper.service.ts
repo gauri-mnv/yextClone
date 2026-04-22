@@ -109,7 +109,7 @@ export class InfobelScraperService {
       return [finalData];
     } catch (e) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      alert(`❌ [Infobel] Error: ${e}`);
+      console.error(`❌ [Infobel] Error: ${e}`);
       return [];
     } finally {
       await browser.close();

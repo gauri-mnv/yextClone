@@ -98,7 +98,7 @@ export class InstagramScraperService {
             timestamp: new Date().toISOString(),
           });
         } catch (e) {
-          alert(
+          console.warn(
             `⚠️ Could not deep scrape Instagram profile: ${profile!.link} - ${e}`,
           );
         } finally {
@@ -112,7 +112,7 @@ export class InstagramScraperService {
 
       return finalResults;
     } catch (error) {
-      alert(`❌ Instagram Scraper Error: ${error}`);
+      console.error(`❌ Instagram Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();

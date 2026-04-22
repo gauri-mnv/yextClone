@@ -100,7 +100,7 @@ export class YelpScraperService {
             timestamp: new Date().toISOString(),
           });
         } catch (e) {
-          alert(`Failed to fetch details for ${link}: ${e}`);
+          console.warn(`Failed to fetch details for ${link}: ${e}`);
 
           return [];
         }

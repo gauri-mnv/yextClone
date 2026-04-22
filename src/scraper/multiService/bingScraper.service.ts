@@ -31,7 +31,7 @@ export class BingScraperService {
           timeout: 5000,
         });
       } catch (e) {
-        alert(`⚠️ Bing took too long, trying to scrape anyway... ${e}`);
+        console.warn(`⚠️ Bing took too long, trying to scrape anyway... ${e}`);
       }
       const results = await page.evaluate(() => {
         const items = Array.from(document.querySelectorAll('li.b_algo'));
@@ -72,7 +72,7 @@ export class BingScraperService {
         timestamp: new Date().toISOString(),
       }));
     } catch (error) {
-      alert(`❌ Bing Scraper Error: ${error}`);
+      console.error(`❌ Bing Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();

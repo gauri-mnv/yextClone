@@ -32,14 +32,14 @@ export class GoogleMapsScraperService {
           await consentButton.click();
         }
       } catch (error) {
-        alert(error);
+        console.error(`Error occurred while accepting consent: ${error}`);
       }
       try {
         await page.waitForSelector('div[role="article"], h1.DUwDvf', {
           timeout: 15000,
         });
       } catch (error) {
-        alert(`No results found or timeout: ${error}`);
+        console.error(`No results found or timeout: ${error}`);
         await browser.close();
         return [];
       }
@@ -107,7 +107,7 @@ export class GoogleMapsScraperService {
       await browser.close();
       return finalResults;
     } catch (error) {
-      alert(`❌ Scraping Error: ${error}`);
+      console.error(`❌ Scraping Error: ${error}`);
       await browser.close();
       return [];
     } finally {

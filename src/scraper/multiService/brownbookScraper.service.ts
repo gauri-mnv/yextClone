@@ -105,7 +105,9 @@ export class BrownbookScraperService {
             await page.waitForTimeout(5000);
           }
         } catch (e) {
-          alert(`❌ [Brownbook] Failed to interact with captcha iframe: ${e}`);
+          console.error(
+            `❌ [Brownbook] Failed to interact with captcha iframe: ${e}`,
+          );
         }
       }
 
@@ -151,13 +153,15 @@ export class BrownbookScraperService {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-return
           return [finalData];
         } else {
-          alert('⚠️ [Brownbook] Business name match nahi hua results mein.');
+          console.warn(
+            '⚠️ [Brownbook] Business name match nahi hua results mein.',
+          );
         }
       }
 
       return [];
     } catch (e) {
-      alert('❌ [Brownbook] Error: ' + e);
+      console.error(`❌ [Brownbook] Error: ${e}`);
       return [];
     } finally {
       await browser.close();

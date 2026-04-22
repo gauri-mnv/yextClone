@@ -46,7 +46,7 @@ export class N49ScraperService {
           { timeout: 20000 },
         );
       } catch (e) {
-        alert(
+        console.log(
           `⚠️ [N49] Suggestions/Results took too long or not found.,\n${e}`,
         );
       }
@@ -115,7 +115,7 @@ export class N49ScraperService {
 
       return finalResults;
     } catch (error) {
-      alert(`❌ [N49] Global Scraper Error: ${error}`);
+      console.log(`❌ [N49] Global Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();

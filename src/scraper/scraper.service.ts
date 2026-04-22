@@ -10,6 +10,7 @@ import { InstagramScraperService } from './demoService/instagramScrapper.service
 import { WhereToScraperService } from './demoService/wheretoScraper.service';
 import { HotfrogScraperService } from './demoService/hotfrogScraper.service';
 import { FacebookScraperService } from './demoService/facebookScraper.service';
+import { IGlobalScraperService } from './multiService/iGlobalScraper.service';
 // import { Location } from './location.entity';
 // import { InjectRepository } from '@nestjs/typeorm';
 // import { Repository } from 'typeorm';
@@ -30,6 +31,7 @@ export class ScraperService {
     private hotfrogScraperService: HotfrogScraperService,
     // private brownbookScraperService: BrownbookScraperService,
     private facebookScraperService: FacebookScraperService,
+    private readonly iGlobalScraperService: IGlobalScraperService,
   ) {}
 
   async scrapeAllPlatforms(
@@ -49,6 +51,7 @@ export class ScraperService {
       wheretoData,
       hotfrogData,
       facebookData,
+      iglobalData,
     ] = await Promise.all([
       this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
       this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
@@ -60,6 +63,7 @@ export class ScraperService {
       this.wheretoScraperService.scrapeWhereTo(name, location),
       this.hotfrogScraperService.scrapeHotfrog(name, location),
       this.facebookScraperService.scrapeFacebook(name),
+      this.iGlobalScraperService.scrapeIGlobal(name),
     ]);
     const combinedData = [
       ...googleData,
@@ -72,6 +76,7 @@ export class ScraperService {
       ...wheretoData,
       ...hotfrogData,
       ...facebookData,
+      ...iglobalData,
     ];
 
     return combinedData;

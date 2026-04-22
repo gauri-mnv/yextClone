@@ -44,7 +44,7 @@ export class MapQuestScraperService {
       try {
         await page.waitForTimeout(3000);
       } catch (e) {
-        alert(
+        console.log(
           `⚠️ [MapQuest] No immediate results found. Checking page content... - ${e}`,
         );
       }
@@ -111,24 +111,25 @@ export class MapQuestScraperService {
               link: link,
             };
           }, link);
-          console.log({
-            name: extractedData.name,
-            address: extractedData.address,
-            phone: extractedData.phone,
-            locationLink: link,
-            source: 'MapQuest',
-            timestamp: new Date().toISOString(),
-          });
-          finalResults.push({
-            name: extractedData.name,
-            address: extractedData.address,
-            phone: extractedData.phone,
-            locationLink: link,
-            source: 'MapQuest',
-            timestamp: new Date().toISOString(),
-          });
+          const targetClean = query.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const foundClean = extractedData.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+          if (
+            foundClean.includes(targetClean) ||
+            targetClean.includes(foundClean)
+          ) {
+            finalResults.push({
+              name: extractedData.name,
+              address: extractedData.address,
+              phone: extractedData.phone,
+              locationLink: link,
+              source: 'MapQuest',
+              timestamp: new Date().toISOString(),
+            });
+          }
         } catch (e) {
-          alert(`❌ [MapQuest] Error deep searching: ${link} - ${e}`);
+          console.log(`❌ [MapQuest] Error deep searching: ${link} - ${e}`);
         } finally {
           await newPage.close();
         }
@@ -139,7 +140,7 @@ export class MapQuestScraperService {
       // }
       return finalResults;
     } catch (error) {
-      alert(`❌ [MapQuest] Global Scraper Error: ${error}`);
+      console.log(`❌ [MapQuest] Global Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();

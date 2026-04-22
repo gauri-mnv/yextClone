@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Location } from '../location.entity';
+// import { InjectRepository } from '@nestjs/typeorm';
+// import { Repository } from 'typeorm';
+// import { Location } from '../location.entity';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -12,8 +12,8 @@ chromium.use(StealthPlugin());
 @Injectable()
 export class IGlobalScraperService {
   constructor(
-    @InjectRepository(Location)
-    private locationRepo: Repository<Location>,
+    // @InjectRepository(Location)
+    // private locationRepo: Repository<Location>,
   ) {}
 
   async scrapeIGlobal(targetName: string): Promise<LocationResponseDto[]> {
@@ -93,7 +93,7 @@ export class IGlobalScraperService {
         },
       ];
     } catch (e) {
-      alert(`❌ [iGlobal] Error: ${e}`);
+      console.error(`❌ [iGlobal] Error: ${e}`);
       return [];
     } finally {
       await browser.close();

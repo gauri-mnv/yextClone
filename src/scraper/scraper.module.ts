@@ -12,6 +12,7 @@ import { InstagramScraperService } from './demoService/instagramScrapper.service
 import { WhereToScraperService } from './demoService/wheretoScraper.service';
 import { HotfrogScraperService } from './demoService/hotfrogScraper.service';
 import { FacebookScraperService } from './demoService/facebookScraper.service';
+import { IGlobalScraperService } from './multiService/iGlobalScraper.service';
 // import { CylexScraperService } from './multiService/cylexScraper.service';
 // import { BrownbookScraperService } from './multiService/brownbookScraper.service';
 // import { InfobelScraperService } from './multiService/infobelScraper.service';
@@ -36,6 +37,7 @@ import { FacebookScraperService } from './demoService/facebookScraper.service';
     WhereToScraperService,
     HotfrogScraperService,
     FacebookScraperService,
+    IGlobalScraperService,
     // BrownbookScraperService,
     // CylexScraperService,
     // BrownbookScraperService,

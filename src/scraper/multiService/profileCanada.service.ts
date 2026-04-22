@@ -105,7 +105,7 @@ export class ProfileCanadaScraperService {
 
       return [finalResult];
     } catch (error) {
-      alert(`❌ [ProfileCanada] Scraper Error: ${error}`);
+      console.error(`❌ [ProfileCanada] Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();

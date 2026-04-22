@@ -110,16 +110,32 @@ export class OpendiScraperService {
             };
           }, link);
 
-          finalResults.push({
-            name: extractedData.name,
-            address: extractedData.address,
-            phone: extractedData.phone,
-            locationLink: link,
-            source: 'Opendi',
-            timestamp: new Date().toISOString(),
-          });
+          const targetClean = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const foundClean = extractedData.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+
+          // Skip if it's "Privacy Policy" or other junk
+          if (foundClean.includes('privacypolicy') || foundClean === '-')
+            continue;
+
+          if (
+            foundClean.includes(targetClean) ||
+            targetClean.includes(foundClean)
+          ) {
+            finalResults.push({
+              name: extractedData.name,
+              address: extractedData.address,
+              phone: extractedData.phone,
+              locationLink: link,
+              source: 'Opendi',
+              timestamp: new Date().toISOString(),
+            });
+            await newPage.close();
+            return finalResults;
+          }
         } catch (e) {
-          alert(`❌ [Opendi] Error deep searching: ${link} - ${e}`);
+          console.log(`❌ [Opendi] Error deep searching: ${link} - ${e}`);
         } finally {
           await newPage.close();
         }
@@ -131,7 +147,7 @@ export class OpendiScraperService {
 
       return finalResults;
     } catch (error) {
-      alert(`❌ [Opendi] Global Scraper Error: ${error}`);
+      console.log(`❌ [Opendi] Global Scraper Error: ${error}`);
       return [];
     } finally {
       await browser.close();
