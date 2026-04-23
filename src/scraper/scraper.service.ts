@@ -12,6 +12,8 @@ import { WhereToScraperService } from './demoService/wheretoScraper.service';
 import { HotfrogScraperService } from './demoService/hotfrogScraper.service';
 import { FacebookScraperService } from './demoService/facebookScraper.service';
 import { IGlobalScraperService } from './multiService/iGlobalScraper.service';
+import { GoLocalScraperService } from './demoService/goLocal247Scrapper.service';
+import { MerchantCircleScraperService } from './demoService/merchantCircleScraper.service';
 // import { Location } from './location.entity';
 // import { InjectRepository } from '@nestjs/typeorm';
 // import { Repository } from 'typeorm';
@@ -33,7 +35,9 @@ export class ScraperService {
     // private brownbookScraperService: BrownbookScraperService,
     private facebookScraperService: FacebookScraperService,
     private readonly iGlobalScraperService: IGlobalScraperService,
-  ) {}
+    private goLocalScraperService: GoLocalScraperService,
+    private merchantCircleScraperService: MerchantCircleScraperService,
+  ) { }
 
   async scrapeAllPlatforms(
     name: string,
@@ -54,6 +58,8 @@ export class ScraperService {
       hotfrogData,
       facebookData,
       iglobalData,
+      goLocalData,
+      merchantCircleData,
     ] = await Promise.all([
       this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
       this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
@@ -66,6 +72,8 @@ export class ScraperService {
       this.hotfrogScraperService.scrapeHotfrog(name, location),
       this.facebookScraperService.scrapeFacebook(name),
       this.iGlobalScraperService.scrapeIGlobal(name),
+      this.goLocalScraperService.scrapeGoLocal(name, location),
+      this.merchantCircleScraperService.scrapeMerchantCircle(name, location),
     ]);
     const combinedData = [
       ...googleData,
@@ -79,6 +87,8 @@ export class ScraperService {
       ...hotfrogData,
       ...facebookData,
       ...iglobalData,
+      ...goLocalData,
+      ...merchantCircleData,
     ];
 
     if (phone && phone.trim() !== '') {
