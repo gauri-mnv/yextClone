@@ -18,6 +18,7 @@ export class ScraperController {
     return this.scraperService.scrapeAllPlatforms(
       scrapeDto.name,
       scrapeDto.location,
+      scrapeDto.phone,
     );
   }
 }

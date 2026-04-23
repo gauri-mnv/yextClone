@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from './dto/location-response.dto';
 import { GoogleMapsScraperService } from './multiService/GoogleMapsScraper.service';
@@ -36,7 +37,8 @@ export class ScraperService {
 
   async scrapeAllPlatforms(
     name: string,
-    location: string = '',
+    location: string,
+    phone: string,
   ): Promise<LocationResponseDto[]> {
     // await this.locationRepo.clear();
 
@@ -79,6 +81,78 @@ export class ScraperService {
       ...iglobalData,
     ];
 
+    if (phone && phone.trim() !== '') {
+      console.log('Phone state:', phone);
+      return combinedData.map((item) => ({
+        ...item,
+        audit: this.checkNAPMatch(item, name, phone, location),
+      }));
+    }
+
     return combinedData;
+  }
+
+  checkNAPMatch(
+    scraped: any,
+    inputName: string,
+    inputPhone: string,
+    inputLocation: string,
+  ) {
+    console.log(
+      'Checking NAP for:',
+      scraped.name,
+      scraped.phone,
+      scraped.address,
+    );
+    const checkAddressMatch = (scrapedAddr: string, inputAddr: string) => {
+      if (!scrapedAddr || !inputAddr) return false;
+
+      const sAddr = scrapedAddr.toLowerCase();
+      const iAddr = inputAddr.toLowerCase();
+
+      if (sAddr.includes(iAddr) || iAddr.includes(sAddr)) return true;
+      const inputParts = iAddr
+        .split(/[\s,]+/)
+        .filter((part) => part.length > 2);
+      if (inputParts.length === 0) return false;
+
+      const matches = inputParts.filter((part) => sAddr.includes(part));
+      return matches.length / inputParts.length >= 0.6;
+    };
+
+    // NestJS: ScraperService.ts
+
+    const cleanPhone = (p: string) => {
+      console.log('p', p);
+      if (!p) return '';
+      const digits = p.replace(/\D/g, '');
+      return digits.length >= 10 ? digits.slice(-10) : digits;
+    };
+
+    const inputPhoneClean = cleanPhone(inputPhone);
+    const scrapedPhoneClean = cleanPhone(scraped.phone);
+
+    const cleanStr = (s: string) =>
+      s?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
+    // Name Match
+    const isNameMatch =
+      cleanStr(scraped.name).includes(cleanStr(inputName)) ||
+      cleanStr(inputName).includes(cleanStr(scraped.name));
+
+    // Phone Match (Actual digits only)
+    const isPhoneMatch =
+      inputPhoneClean !== '' && scrapedPhoneClean === inputPhoneClean;
+
+    const isAddrMatch = checkAddressMatch(scraped.address, inputLocation);
+
+    return {
+      status:
+        isNameMatch && isPhoneMatch && isAddrMatch ? 'Verified' : 'Mismatch',
+      results: {
+        name: isNameMatch ? scraped.name : '',
+        phone: isPhoneMatch ? scraped.phone : '',
+        address: isAddrMatch ? scraped.address : '',
+      },
+    };
   }
 }

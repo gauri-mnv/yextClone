@@ -16,4 +16,8 @@ export class ScrapeRequestDto {
   @IsString()
   @IsOptional()
   location: string;
+
+  @IsString()
+  @IsOptional()
+  phone: string;
 }
