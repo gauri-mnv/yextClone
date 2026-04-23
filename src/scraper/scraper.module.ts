@@ -13,6 +13,8 @@ import { WhereToScraperService } from './demoService/wheretoScraper.service';
 import { HotfrogScraperService } from './demoService/hotfrogScraper.service';
 import { FacebookScraperService } from './demoService/facebookScraper.service';
 import { IGlobalScraperService } from './multiService/iGlobalScraper.service';
+import { GoLocalScraperService } from './demoService/goLocal247Scrapper.service';
+import { MerchantCircleScraperService } from './demoService/merchantCircleScraper.service';
 // import { CylexScraperService } from './multiService/cylexScraper.service';
 // import { BrownbookScraperService } from './multiService/brownbookScraper.service';
 // import { InfobelScraperService } from './multiService/infobelScraper.service';
@@ -40,6 +42,8 @@ import { IGlobalScraperService } from './multiService/iGlobalScraper.service';
     HotfrogScraperService,
     FacebookScraperService,
     IGlobalScraperService,
+    GoLocalScraperService,
+    MerchantCircleScraperService,
     // BrownbookScraperService,
     // CylexScraperService,
     // BrownbookScraperService,
