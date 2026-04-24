@@ -3,9 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from './dto/location-response.dto';
 import { GoogleMapsScraperService } from './multiService/GoogleMapsScraper.service';
 import { YelpScraperService } from './multiService/yelpScaper.service';
-// import { N49ScraperService } from '../scraper/multiService/n49Scraper.service';
-import { MapQuestScraperService } from '../scraper/multiService/mapquestScraper.service';
-import { OpendiScraperService } from '../scraper/multiService/opendiScraper.service';
+// import { BingScraperService } from './multiService/bingScraper.service';
+import { N49ScraperService } from './multiService/n49Scraper.service';
+import { MapQuestScraperService } from './multiService/mapquestScraper.service';
+import { OpendiScraperService } from './multiService/opendiScraper.service';
 import { ProfileCanadaScraperService } from './multiService/profileCanada.service';
 import { InstagramScraperService } from './demoService/instagramScrapper.service';
 import { WhereToScraperService } from './demoService/wheretoScraper.service';
@@ -14,6 +15,9 @@ import { FacebookScraperService } from './demoService/facebookScraper.service';
 import { IGlobalScraperService } from './multiService/iGlobalScraper.service';
 import { GoLocalScraperService } from './demoService/goLocal247Scrapper.service';
 import { MerchantCircleScraperService } from './demoService/merchantCircleScraper.service';
+// import { CylexScraperService } from './multiService/cylexScraper.service';
+// import { BrownbookScraperService } from './multiService/brownbookScraper.service';
+// import { InfobelScraperService } from './multiService/infobelScraper.service';
 // import { Location } from './location.entity';
 // import { InjectRepository } from '@nestjs/typeorm';
 // import { Repository } from 'typeorm';
@@ -25,81 +29,110 @@ export class ScraperService {
     // private locationRepo: Repository<Location>,
     private googleMapsScraperService: GoogleMapsScraperService,
     private yelpScraperService: YelpScraperService,
-    // private n49Service: N49ScraperService,
+    // private bingScraperService: BingScraperService,
+    private n49Service: N49ScraperService,
     private mapquestService: MapQuestScraperService,
     private opendiService: OpendiScraperService,
     private profileCanadaService: ProfileCanadaScraperService,
     private instagramService: InstagramScraperService,
     private wheretoScraperService: WhereToScraperService,
     private hotfrogScraperService: HotfrogScraperService,
-    // private brownbookScraperService: BrownbookScraperService,
     private facebookScraperService: FacebookScraperService,
     private readonly iGlobalScraperService: IGlobalScraperService,
     private goLocalScraperService: GoLocalScraperService,
     private merchantCircleScraperService: MerchantCircleScraperService,
+    // private cylexScraperService: CylexScraperService,
+    // private brownbookScraperService: BrownbookScraperService,
+    // private infobelScraperService: InfobelScraperService,
   ) { }
+
+  private async safeScrape(scraperPromise: Promise<any>, sourceName: string): Promise<any[]> {
+    const defaultObj = {
+      name: '',
+      address: '',
+      phone: '',
+      locationLink: '',
+      source: sourceName,
+      timestamp: new Date().toISOString()
+    };
+    try {
+      const result = await scraperPromise;
+      if (!result || (Array.isArray(result) && result.length === 0)) {
+        return [defaultObj];
+      }
+      const data = Array.isArray(result) ? result : [result];
+      return data.map((item: any) => ({ ...item, source: sourceName }));
+    } catch (error: any) {
+      const errMsg = error?.message || 'Unknown error';
+      console.error(`[Scraper Error] ${sourceName} failed: ${errMsg.split('\n')[0]}`);
+      return [defaultObj];
+    }
+  }
 
   async scrapeAllPlatforms(
     name: string,
     location: string,
     phone: string,
-  ): Promise<LocationResponseDto[]> {
+  ): Promise<any[]> {
     // await this.locationRepo.clear();
 
-    const [
-      googleData,
-      yelpData,
-      // N49ScraperData,
-      mapquestData,
-      opendiData,
-      profileCanadaData,
-      instagramData,
-      wheretoData,
-      hotfrogData,
-      facebookData,
-      iglobalData,
-      goLocalData,
-      merchantCircleData,
-    ] = await Promise.all([
-      this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
-      this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
-      // this.n49Service.scrapeN49(name, location),
-      this.mapquestService.scrapeMapQuest(`${name} ${location}`),
-      this.opendiService.scrapeOpendi(name, location),
-      this.profileCanadaService.scrapeProfileCanada(name, location),
-      this.instagramService.scrapeInstagram(name),
-      this.wheretoScraperService.scrapeWhereTo(name, location),
-      this.hotfrogScraperService.scrapeHotfrog(name, location),
-      this.facebookScraperService.scrapeFacebook(name),
-      this.iGlobalScraperService.scrapeIGlobal(name),
-      this.goLocalScraperService.scrapeGoLocal(name, location),
-      this.merchantCircleScraperService.scrapeMerchantCircle(name, location),
+    const results = await Promise.all([
+      this.safeScrape(this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`), 'Google Maps'),
+      this.safeScrape(this.yelpScraperService.scrapeYelp(`${name} `, `${location}`), 'Yelp'),
+      // this.safeScrape(this.bingScraperService.scrapeBing(name, location), 'Bing'),
+      this.safeScrape(this.n49Service.scrapeN49(name, location), 'N49'),
+      this.safeScrape(this.mapquestService.scrapeMapQuest(`${name} ${location}`), 'MapQuest'),
+      this.safeScrape(this.opendiService.scrapeOpendi(name, location), 'Opendi'),
+      this.safeScrape(this.profileCanadaService.scrapeProfileCanada(name, location), 'Profile Canada'),
+      this.safeScrape(this.instagramService.scrapeInstagram(name), 'Instagram'),
+      this.safeScrape(this.wheretoScraperService.scrapeWhereTo(name, location), 'WhereTo'),
+      this.safeScrape(this.hotfrogScraperService.scrapeHotfrog(name, location), 'Hotfrog'),
+      this.safeScrape(this.facebookScraperService.scrapeFacebook(name), 'Facebook'),
+      this.safeScrape(this.iGlobalScraperService.scrapeIGlobal(name), 'IGlobal'),
+      this.safeScrape(this.goLocalScraperService.scrapeGoLocal(name, location), 'GoLocal247'),
+      this.safeScrape(this.merchantCircleScraperService.scrapeMerchantCircle(name, location), 'MerchantCircle'),
+      // this.safeScrape(this.cylexScraperService.scrapeCylex(name, location), 'Cylex'),
+      // this.safeScrape(this.brownbookScraperService.scrapeBrownbook(name, location), 'Brownbook'),
+      // this.safeScrape(this.infobelScraperService.scrapeInfobel(name, location), 'Infobel'),
     ]);
-    const combinedData = [
-      ...googleData,
-      ...yelpData,
-      // ...N49ScraperData,
-      ...mapquestData,
-      ...opendiData,
-      ...profileCanadaData,
-      ...instagramData,
-      ...wheretoData,
-      ...hotfrogData,
-      ...facebookData,
-      ...iglobalData,
-      ...goLocalData,
-      ...merchantCircleData,
-    ];
 
-    if (phone && phone.trim() !== '') {
-      console.log('Phone state:', phone);
-      return combinedData.map((item) => ({
-        ...item,
-        audit: this.checkNAPMatch(item, name, phone, location),
-      }));
-    }
+    const combinedData = results.flat();
 
-    return combinedData;
+    return combinedData.map((item) => {
+      const isEmpty = !item.name && !item.address && !item.phone;
+
+      if (isEmpty) {
+        return {
+          scraped: {},
+          meta: {
+            source: item.source,
+            locationLink: item.locationLink || '',
+            timestamp: item.timestamp || new Date().toISOString()
+          },
+          audit: {
+            status: 'Mismatch',
+            results: {}
+          }
+        };
+      }
+
+      const auditResult = this.checkNAPMatch(item, name, phone, location);
+      const isVerified = auditResult.status === 'Verified';
+
+      return {
+        scraped: isVerified ? {
+          name: item.name || '',
+          phone: item.phone || '',
+          address: item.address || ''
+        } : {},
+        meta: {
+          source: item.source,
+          locationLink: item.locationLink || '',
+          timestamp: item.timestamp || new Date().toISOString()
+        },
+        audit: auditResult
+      };
+    });
   }
 
   checkNAPMatch(
@@ -108,17 +141,11 @@ export class ScraperService {
     inputPhone: string,
     inputLocation: string,
   ) {
-    console.log(
-      'Checking NAP for:',
-      scraped.name,
-      scraped.phone,
-      scraped.address,
-    );
-    const checkAddressMatch = (scrapedAddr: string, inputAddr: string) => {
+    const checkAddressMatch = (scrapedAddr: any, inputAddr: any) => {
       if (!scrapedAddr || !inputAddr) return false;
 
-      const sAddr = scrapedAddr.toLowerCase();
-      const iAddr = inputAddr.toLowerCase();
+      const sAddr = String(scrapedAddr).toLowerCase();
+      const iAddr = String(inputAddr).toLowerCase();
 
       if (sAddr.includes(iAddr) || iAddr.includes(sAddr)) return true;
       const inputParts = iAddr
@@ -130,20 +157,19 @@ export class ScraperService {
       return matches.length / inputParts.length >= 0.6;
     };
 
-    // NestJS: ScraperService.ts
-
-    const cleanPhone = (p: string) => {
-      console.log('p', p);
+    const cleanPhone = (p: any) => {
       if (!p) return '';
-      const digits = p.replace(/\D/g, '');
+      const strP = String(p);
+      const digits = strP.replace(/\D/g, '');
       return digits.length >= 10 ? digits.slice(-10) : digits;
     };
 
     const inputPhoneClean = cleanPhone(inputPhone);
     const scrapedPhoneClean = cleanPhone(scraped.phone);
 
-    const cleanStr = (s: string) =>
-      s?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
+    const cleanStr = (s: any) =>
+      s ? String(s).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+
     // Name Match
     const isNameMatch =
       cleanStr(scraped.name).includes(cleanStr(inputName)) ||
@@ -155,14 +181,22 @@ export class ScraperService {
 
     const isAddrMatch = checkAddressMatch(scraped.address, inputLocation);
 
+    let matchCount = 0;
+    if (isNameMatch) matchCount++;
+    if (isPhoneMatch) matchCount++;
+    if (isAddrMatch) matchCount++;
+
+    const isVerified = matchCount >= 2;
+
     return {
-      status:
-        isNameMatch && isPhoneMatch && isAddrMatch ? 'Verified' : 'Mismatch',
-      results: {
-        name: isNameMatch ? scraped.name : '',
-        phone: isPhoneMatch ? scraped.phone : '',
-        address: isAddrMatch ? scraped.address : '',
-      },
+      status: isVerified ? 'Verified' : 'Mismatch',
+      results: isVerified
+        ? {
+            name: scraped.name || '',
+            phone: scraped.phone || '',
+            address: scraped.address || ''
+          }
+        : {}
     };
   }
 }
