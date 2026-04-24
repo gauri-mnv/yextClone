@@ -4,7 +4,7 @@ import { ScraperService } from './scraper.service';
 import { GoogleMapsScraperService } from './multiService/GoogleMapsScraper.service';
 import { YelpScraperService } from './multiService/yelpScaper.service';
 import { BingScraperService } from './multiService/bingScraper.service';
-// import { N49ScraperService } from './multiService/n49Scraper.service';
+import { N49ScraperService } from './multiService/n49Scraper.service';
 import { MapQuestScraperService } from './multiService/mapquestScraper.service';
 import { OpendiScraperService } from './multiService/opendiScraper.service';
 import { ProfileCanadaScraperService } from './multiService/profileCanada.service';
@@ -26,18 +26,12 @@ import { MerchantCircleScraperService } from './demoService/merchantCircleScrape
     ScraperService,
     GoogleMapsScraperService,
     YelpScraperService,
-    BingScraperService,
-    // N49ScraperService,
+    // BingScraperService,
+    N49ScraperService,
     InstagramScraperService,
-    // N49ScraperService,
     MapQuestScraperService,
     OpendiScraperService,
     ProfileCanadaScraperService,
-    GoogleMapsScraperService,
-    YelpScraperService,
-    BingScraperService,
-    InstagramScraperService,
-    // N49ScraperService,
     WhereToScraperService,
     HotfrogScraperService,
     FacebookScraperService,
@@ -46,7 +40,6 @@ import { MerchantCircleScraperService } from './demoService/merchantCircleScrape
     MerchantCircleScraperService,
     // BrownbookScraperService,
     // CylexScraperService,
-    // BrownbookScraperService,
     // InfobelScraperService,
   ],
 })
