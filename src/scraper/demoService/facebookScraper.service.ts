@@ -1,16 +1,12 @@
-import { Injectable } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { Injectable, Logger } from '@nestjs/common';
 import { chromium } from 'playwright';
 import { LocationResponseDto } from '../dto/location-response.dto';
-// import { InjectRepository } from '@nestjs/typeorm';
-// import { Repository } from 'typeorm';
-// import { Location } from '../location.entity';
 
 @Injectable()
 export class FacebookScraperService {
-  constructor() {
-    // @InjectRepository(Location)
-    // private locationRepo: Repository<Location>,
-  }
+  private readonly logger = new Logger(FacebookScraperService.name);
 
   async scrapeFacebook(name: string): Promise<LocationResponseDto[]> {
     const browser = await chromium.launch({
@@ -25,71 +21,102 @@ export class FacebookScraperService {
     const page = await context.newPage();
 
     try {
-      //STEP 1: GENERATE SLUGS
-      const base = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      //STEP 1: BUILD SLUGS (1 → 2 → 3 words)
+      const words = name.toLowerCase().split(' ').filter(Boolean);
 
-      const variations = [
-        base,
-        base.replace('clinic', ''),
-        base.replace('dental', ''),
-        base.replace('clinic', '').replace('dental', ''),
-        name.toLowerCase().replace(/\s+/g, ''),
-      ];
+      const slugVariations: string[] = [];
 
+      for (let i = 1; i <= words.length; i++) {
+        slugVariations.push(words.slice(0, i).join(''));
+      }
+
+      // ["airdrie", "airdriechoice", "airdriechoicedental"]
       let targetLink: string | null = null;
 
-      //STEP 2: TRY DIRECT URL
-      for (const slug of variations) {
+      // STEP 2: TRY SLUGS
+      for (const slug of slugVariations) {
         const url = `https://www.facebook.com/${slug}/`;
 
-        console.log('[FB] Trying slug:', url);
+        this.logger.log(`Trying slug: ${url}`);
 
         try {
-          const res = await page.goto(url, {
+          await page.goto(url, {
             waitUntil: 'domcontentloaded',
             timeout: 15000,
           });
 
-          if (res && res.status() === 200) {
-            const title = await page.title();
+          await page.waitForTimeout(3000);
 
-            if (!title.toLowerCase().includes('not found')) {
-              targetLink = url;
-              console.log('[FB] Found via slug:', url);
-              break;
+          //STRONG VALIDATION
+          const validation = await page.evaluate(() => {
+            const text = document.body.innerText.toLowerCase();
+
+            if (
+              text.includes("this content isn't available") ||
+              text.includes("page isn't available") ||
+              text.includes('log in to facebook') ||
+              text.includes('you must log in')
+            ) {
+              return { valid: false };
             }
+
+            const heading = document.querySelector('h1')?.textContent || '';
+
+            return {
+              valid: !!heading,
+              heading,
+            };
+          });
+
+          if (!validation.valid) {
+            this.logger.warn(`Invalid page: ${url}`);
+            continue;
           }
-        } catch {
+
+          //NAME MATCH CHECK
+          const pageName = (validation.heading ?? '').toLowerCase();
+
+          const matchCount = words.filter((w) => pageName.includes(w)).length;
+
+          if (matchCount < Math.ceil(words.length / 2)) {
+            this.logger.warn(`Name mismatch: ${pageName}`);
+            continue;
+          }
+
+          targetLink = url;
+          this.logger.log(`✅ Valid page found: ${url}`);
+          break;
+        } catch (err) {
+          this.logger.warn(`Slug failed: ${url}`);
           continue;
         }
       }
 
-      //STEP 3: FALLBACK SEARCH
+      //STEP 3: GOOGLE FALLBACK
       if (!targetLink) {
-        const searchUrl = `https://www.facebook.com/search/pages?q=${encodeURIComponent(
-          name,
+        const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(
+          name + ' facebook',
         )}`;
 
-        console.log('[FB] Fallback search:', searchUrl);
+        this.logger.log(`Google fallback: ${googleUrl}`);
 
-        await page.goto(searchUrl, {
+        await page.goto(googleUrl, {
           waitUntil: 'domcontentloaded',
-          timeout: 60000,
         });
 
-        await page.waitForTimeout(5000);
+        await page.waitForTimeout(3000);
 
-        const links = await page.locator('a[href*="facebook.com"]').all();
+        const links = await page.locator('a').all();
 
-        for (const link of links.slice(0, 5)) {
-          const text = (await link.textContent())?.toLowerCase() || '';
+        for (const link of links) {
+          const href = await link.getAttribute('href');
 
-          if (text.includes(name.toLowerCase())) {
-            const href = await link.getAttribute('href');
+          if (href && href.includes('facebook.com')) {
+            const cleanLink = href.split('&')[0].replace('/url?q=', '');
 
-            if (href && !href.includes('search')) {
-              targetLink = href;
-              console.log('[FB] Found via search:', targetLink);
+            if (!cleanLink.includes('search')) {
+              targetLink = cleanLink;
+              this.logger.log(`✅ Found via Google: ${targetLink}`);
               break;
             }
           }
@@ -97,11 +124,11 @@ export class FacebookScraperService {
       }
 
       if (!targetLink) {
-        console.log('[FB] No page found');
+        this.logger.error('No Facebook page found');
         return [];
       }
 
-      //STEP 4: OPEN DETAIL PAGE
+      //STEP 4: OPEN PAGE
       const detailPage = await context.newPage();
 
       await detailPage.goto(targetLink, {
@@ -114,7 +141,6 @@ export class FacebookScraperService {
       //STEP 5: EXTRACT DATA
       const data = await detailPage.evaluate(() => {
         const clean = (txt: any) =>
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
           txt ? txt.replace(/\s+/g, ' ').trim() : '-';
 
         const name =
@@ -131,7 +157,6 @@ export class FacebookScraperService {
 
         // ADDRESS
         let address = '-';
-
         const lines = bodyText.split('\n');
 
         for (const line of lines) {
@@ -156,18 +181,17 @@ export class FacebookScraperService {
         };
       });
 
-      //STEP 6: VALIDATE RESULT
-      const keywords = name.toLowerCase().split(' ');
+      //STEP 6: FINAL VALIDATION
       const itemName = data.name.toLowerCase();
 
-      const matchCount = keywords.filter((k) => itemName.includes(k)).length;
+      const matchCount = words.filter((w) => itemName.includes(w)).length;
 
-      if (matchCount < Math.ceil(keywords.length / 2)) {
-        console.log('[FB] Filtered wrong page:', data.name);
+      if (matchCount < Math.ceil(words.length / 2)) {
+        this.logger.warn(`Final validation failed: ${data.name}`);
         return [];
       }
 
-      //STEP 7: FORMAT RESULT
+      //STEP 7: RESULT
       const result: LocationResponseDto = {
         name: data.name,
         phone: data.phone,
@@ -177,29 +201,14 @@ export class FacebookScraperService {
         timestamp: new Date().toISOString(),
       };
 
-      // SAVE TO DB
-      // await this.saveResults([result]);
+      this.logger.log(`SUCCESS: ${data.name}`);
 
       return [result];
     } catch (err) {
-      console.error('[FB ERROR]', err);
+      this.logger.error('Scraper error', err);
       return [];
     } finally {
       await browser.close();
     }
   }
-
-  // async saveResults(results: LocationResponseDto[]) {
-  //   for (const item of results) {
-  //     const existing = await this.locationRepo.findOne({
-  //       where: { locationLink: item.locationLink },
-  //     });
-
-  //     if (!existing) {
-  //       await this.locationRepo.save(this.locationRepo.create(item));
-  //     } else {
-  //       await this.locationRepo.update(existing.id, item);
-  //     }
-  //   }
-  // }
 }
