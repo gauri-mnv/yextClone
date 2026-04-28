@@ -9,6 +9,7 @@ import {
   OpendiScraperService,
   ProfileCanadaScraperService,
   IGlobalScraperService,
+  InfobelScraperService,
 } from './multiService';
 import {
   InstagramScraperService,
@@ -18,8 +19,6 @@ import {
   GoLocalScraperService,
   MerchantCircleScraperService,
 } from './demoService';
-
-
 
 @Module({
   // imports: [TypeOrmModule.forFeature([Location])],
@@ -42,7 +41,7 @@ import {
     MerchantCircleScraperService,
     // BrownbookScraperService,
     // CylexScraperService,
-    // InfobelScraperService,
+    InfobelScraperService,
   ],
 })
 export class ScraperModule {}
