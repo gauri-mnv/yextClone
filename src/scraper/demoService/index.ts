@@ -5,3 +5,5 @@ export * from './hotfrogScraper.service';
 export * from './instagramScrapper.service';
 export * from './merchantCircleScraper.service';
 export * from './wheretoScraper.service';
+export * from './myLocalServiceScrapper.service';
+

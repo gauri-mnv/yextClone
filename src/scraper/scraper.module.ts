@@ -17,6 +17,7 @@ import {
   FacebookScraperService,
   GoLocalScraperService,
   MerchantCircleScraperService,
+  MyLocalServicesScraperService,
 } from './demoService';
 
 
@@ -43,6 +44,7 @@ import {
     // BrownbookScraperService,
     // CylexScraperService,
     // InfobelScraperService,
+    MyLocalServicesScraperService,
   ],
 })
 export class ScraperModule {}

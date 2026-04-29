@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Injectable } from '@nestjs/common';
-import { LocationResponseDto } from './dto/location-response.dto';
 import {
   GoogleMapsScraperService,
   YelpScraperService,
@@ -17,6 +16,7 @@ import {
   FacebookScraperService,
   GoLocalScraperService,
   MerchantCircleScraperService,
+  MyLocalServicesScraperService,
 } from './demoService';
 
 // import { Location } from './location.entity';
@@ -45,6 +45,7 @@ export class ScraperService {
     // private cylexScraperService: CylexScraperService,
     // private brownbookScraperService: BrownbookScraperService,
     // private infobelScraperService: InfobelScraperService,
+    private myLocalServicesScraperService: MyLocalServicesScraperService,
   ) { }
 
   private async safeScrape(scraperPromise: Promise<any>, sourceName: string): Promise<any[]> {
@@ -92,6 +93,7 @@ export class ScraperService {
       this.safeScrape(this.iGlobalScraperService.scrapeIGlobal(name), 'IGlobal'),
       this.safeScrape(this.goLocalScraperService.scrapeGoLocal(name, location), 'GoLocal247'),
       this.safeScrape(this.merchantCircleScraperService.scrapeMerchantCircle(name, location), 'MerchantCircle'),
+      this.safeScrape(this.myLocalServicesScraperService.scrapeMyLocalServices(name, location), 'MyLocalServices'),
       // this.safeScrape(this.cylexScraperService.scrapeCylex(name, location), 'Cylex'),
       // this.safeScrape(this.brownbookScraperService.scrapeBrownbook(name, location), 'Brownbook'),
       // this.safeScrape(this.infobelScraperService.scrapeInfobel(name, location), 'Infobel'),
