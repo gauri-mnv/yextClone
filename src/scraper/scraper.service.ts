@@ -19,6 +19,7 @@ import {
   FacebookScraperService,
   GoLocalScraperService,
   MerchantCircleScraperService,
+  MyLocalServicesScraperService,
 } from './demoService';
 
 // import { Location } from './location.entity';
@@ -46,8 +47,10 @@ export class ScraperService {
     private merchantCircleScraperService: MerchantCircleScraperService,
     // private cylexScraperService: CylexScraperService,
     // private brownbookScraperService: BrownbookScraperService,
-    private infobelScraperService: InfobelScraperService,
-  ) {}
+    // private infobelScraperService: InfobelScraperService,
+     private infobelScraperService: InfobelScraperService,
+    private myLocalServicesScraperService: MyLocalServicesScraperService,
+  ) { }
 
   private async safeScrape(
     scraperPromise: Promise<any>,
@@ -86,66 +89,24 @@ export class ScraperService {
     // await this.locationRepo.clear();
 
     const tasks = [
-      {
-        promise: this.googleMapsScraperService.scrapeGoogleMaps(
-          `${name} ${location}`,
-        ),
-        source: 'Google Maps',
-      },
-      {
-        promise: this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
-        source: 'Yelp',
-      },
+      { promise: this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`), source: 'Google Maps' },
+      { promise: this.yelpScraperService.scrapeYelp(`${name} `, `${location}`), source: 'Yelp' },
+      // { promise: this.bingScraperService.scrapeBing(name, location), source: 'Bing' },
       { promise: this.n49Service.scrapeN49(name, location), source: 'N49' },
-      {
-        promise: this.mapquestService.scrapeMapQuest(`${name} ${location}`),
-        source: 'MapQuest',
-      },
-      {
-        promise: this.opendiService.scrapeOpendi(name, location),
-        source: 'Opendi',
-      },
-      {
-        promise: this.profileCanadaService.scrapeProfileCanada(name, location),
-        source: 'Profile Canada',
-      },
-      {
-        promise: this.instagramService.scrapeInstagram(name),
-        source: 'Instagram',
-      },
-      {
-        promise: this.wheretoScraperService.scrapeWhereTo(name, location),
-        source: 'WhereTo',
-      },
-      {
-        promise: this.hotfrogScraperService.scrapeHotfrog(name, location),
-        source: 'Hotfrog',
-      },
-      {
-        promise: this.facebookScraperService.scrapeFacebook(name),
-        source: 'Facebook',
-      },
-      {
-        promise: this.iGlobalScraperService.scrapeIGlobal(name),
-        source: 'IGlobal',
-      },
-      {
-        promise: this.goLocalScraperService.scrapeGoLocal(name, location),
-        source: 'GoLocal247',
-      },
-      {
-        promise: this.merchantCircleScraperService.scrapeMerchantCircle(
-          name,
-          location,
-        ),
-        source: 'MerchantCircle',
-      },
+      { promise: this.mapquestService.scrapeMapQuest(`${name} ${location}`), source: 'MapQuest' },
+      { promise: this.opendiService.scrapeOpendi(name, location), source: 'Opendi' },
+      { promise: this.profileCanadaService.scrapeProfileCanada(name, location), source: 'Profile Canada' },
+      { promise: this.instagramService.scrapeInstagram(name), source: 'Instagram' },
+      { promise: this.wheretoScraperService.scrapeWhereTo(name, location), source: 'WhereTo' },
+      { promise: this.hotfrogScraperService.scrapeHotfrog(name, location), source: 'Hotfrog' },
+      { promise: this.facebookScraperService.scrapeFacebook(name), source: 'Facebook' },
+      { promise: this.iGlobalScraperService.scrapeIGlobal(name), source: 'IGlobal' },
+      { promise: this.goLocalScraperService.scrapeGoLocal(name, location), source: 'GoLocal247' },
+      { promise: this.merchantCircleScraperService.scrapeMerchantCircle(name, location), source: 'MerchantCircle' },
+      { promise: this.myLocalServicesScraperService.scrapeMyLocalServices(name, location), source: 'MyLocalServices' },
+      { promise: this.infobelScraperService.scrapeInfobel(name, location), source: 'Infobel' },
       // { promise: this.cylexScraperService.scrapeCylex(name, location), source: 'Cylex' },
       // { promise: this.brownbookScraperService.scrapeBrownbook(name, location), source: 'Brownbook' },
-      {
-        promise: this.infobelScraperService.scrapeInfobel(name, location),
-        source: 'Infobel',
-      },
     ];
 
     const processTask = async (task: {

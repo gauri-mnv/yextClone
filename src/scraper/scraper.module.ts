@@ -18,6 +18,7 @@ import {
   FacebookScraperService,
   GoLocalScraperService,
   MerchantCircleScraperService,
+  MyLocalServicesScraperService,
 } from './demoService';
 import { ScraperGateway } from './scraper.gateway';
 
@@ -43,6 +44,8 @@ import { ScraperGateway } from './scraper.gateway';
     MerchantCircleScraperService,
     // BrownbookScraperService,
     // CylexScraperService,
+    // InfobelScraperService,
+    MyLocalServicesScraperService,
     InfobelScraperService,
   ],
 })
