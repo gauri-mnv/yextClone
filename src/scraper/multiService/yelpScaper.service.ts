@@ -1,130 +1,291 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
-import { chromium } from 'playwright';
-// import { Repository } from 'typeorm';
-// import { Location } from '../location.entity';
-// import { InjectRepository } from '@nestjs/typeorm';
+import { chromium as chromiumExtra } from 'playwright-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import type { Browser, BrowserContext, Page } from 'playwright';
+
+// Stealth plugin register (sirf ek baar at module load)
+chromiumExtra.use(StealthPlugin());
 
 @Injectable()
 export class YelpScraperService {
-  constructor() {
-    // @InjectRepository(Location)
-    // private locationRepo: Repository<Location>,
+  private readonly logger = new Logger(YelpScraperService.name);
+
+  // Realistic User Agents pool — har request pe rotate karenge
+  private readonly userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0',
+  ];
+
+  private pickUA(): string {
+    return this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
+  }
+
+  private sleep(ms: number) {
+    return new Promise((res) => setTimeout(res, ms));
+  }
+
+  private async humanScroll(page: Page) {
+    // Random human-like scroll, helps in passing bot heuristics
+    await page.evaluate(async () => {
+      const distance = 100 + Math.floor(Math.random() * 200);
+      const delay = 80 + Math.floor(Math.random() * 120);
+      for (let i = 0; i < 6; i++) {
+        window.scrollBy(0, distance);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    });
+  }
+
+  private async isCaptchaPresent(page: Page): Promise<boolean> {
+    // Yelp ka captcha multiple forms mein aata hai - sab check karo
+    const html = (await page.content()).toLowerCase();
+    if (
+      html.includes('px-captcha') ||
+      html.includes('perimeterx') ||
+      html.includes('please verify') ||
+      html.includes('press & hold') ||
+      html.includes('recaptcha')
+    ) {
+      return true;
+    }
+    // iframe based recaptcha
+    const recaptchaFrame = await page
+      .$('iframe[title*="reCAPTCHA"], iframe[src*="recaptcha"]')
+      .catch(() => null);
+    return !!recaptchaFrame;
+  }
+
+  private async launchBrowser(): Promise<Browser> {
+    // Headless 'new' mode + flags jo automation flags hide karte hain
+    return chromiumExtra.launch({
+      headless: true,
+      args: [
+        '--disable-blink-features=AutomationControlled',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-site-isolation-trials',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+        '--hide-scrollbars',
+        '--mute-audio',
+        '--disable-web-security',
+      ],
+    }) as Promise<Browser>;
+  }
+
+  private async newStealthContext(browser: Browser): Promise<BrowserContext> {
+    const context = await browser.newContext({
+      userAgent: this.pickUA(),
+      viewport: { width: 1366, height: 768 },
+      locale: 'en-US',
+      timezoneId: 'America/New_York',
+      extraHTTPHeaders: {
+        'Accept-Language': 'en-US,en;q=0.9',
+        Accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Sec-Ch-Ua':
+          '"Chromium";v="127", "Not(A:Brand";v="24", "Google Chrome";v="127"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+      },
+      deviceScaleFactor: 1,
+      hasTouch: false,
+      isMobile: false,
+      javaScriptEnabled: true,
+    });
+
+    // Heavy assets block karo — speed + less fingerprinting surface
+    await context.route('**/*', (route) => {
+      const type = route.request().resourceType();
+      if (['image', 'font', 'media', 'stylesheet'].includes(type)) {
+        return route.abort();
+      }
+      return route.continue();
+    });
+
+    // Extra anti-detection script har page pe inject
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-US', 'en'],
+      });
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5],
+      });
+      // chrome runtime fake
+      // @ts-ignore
+      window.chrome = { runtime: {} };
+      // permissions fake
+      const originalQuery = window.navigator.permissions.query;
+      // @ts-ignore
+      window.navigator.permissions.query = (parameters: any) =>
+        parameters.name === 'notifications'
+          ? Promise.resolve({ state: Notification.permission } as any)
+          : originalQuery(parameters);
+    });
+
+    return context;
   }
 
   async scrapeYelp(
     businessName: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    const browser = await chromium.launch({
-      headless: true,
-    });
-    const context = await browser.newContext({
-      userAgent:
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-      viewport: { width: 1280, height: 720 },
-      extraHTTPHeaders: {
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      deviceScaleFactor: 1,
-      hasTouch: false,
-    });
-    const page = await context.newPage();
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-    });
+    const MAX_ATTEMPTS = 3;
 
-    try {
-      const searchUrl = `https://www.yelp.com/search?find_desc=${encodeURIComponent(businessName)}&find_loc=${encodeURIComponent(location)}`;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      let browser: Browser | null = null;
+      try {
+        browser = await this.launchBrowser();
+        const context = await this.newStealthContext(browser);
+        const page = await context.newPage();
 
-      await page.goto('https://www.yelp.com', { waitUntil: 'networkidle' });
-      await page.goto(searchUrl, { waitUntil: 'networkidle' });
-      await page.waitForTimeout(2000 + Math.random() * 3000);
+        const searchUrl = `https://www.yelp.com/search?find_desc=${encodeURIComponent(
+          businessName,
+        )}&find_loc=${encodeURIComponent(location)}`;
 
-      const hasCaptcha = await page.isVisible('iframe[title*="reCAPTCHA"]');
-      if (hasCaptcha) {
-        await page.waitForTimeout(15000);
-      }
-      await page.screenshot({ path: 'yelp-debug.png' });
-      const businessLinks = await page.evaluate(() => {
-        const cards = Array.from(
-          document.querySelectorAll('div[data-testid="serp-ia-card"]'),
-        );
-        const links: string[] = [];
-
-        cards.forEach((card) => {
-          const linkEl = card.querySelector('h3 a') as HTMLAnchorElement;
-          if (
-            linkEl &&
-            linkEl.href.includes('/biz/') &&
-            !linkEl.href.includes('adredir')
-          ) {
-            links.push(linkEl.href);
-          }
+        // Direct search URL pe jao — homepage hop kabhi-kabhi suspicious lagta hai
+        await page.goto(searchUrl, {
+          waitUntil: 'domcontentloaded',
+          timeout: 30000,
         });
-        return [...new Set(links)];
-      });
 
-      const finalResults: LocationResponseDto[] = [];
+        // Random human delay
+        await this.sleep(1500 + Math.random() * 2500);
+        await this.humanScroll(page);
+        await this.sleep(800 + Math.random() * 1200);
 
-      for (const link of businessLinks.slice(0, 5)) {
-        try {
-          await page.goto(link, {
-            waitUntil: 'domcontentloaded',
-            timeout: 20000,
-          });
+        if (await this.isCaptchaPresent(page)) {
+          this.logger.warn(
+            `CAPTCHA detected on attempt ${attempt}/${MAX_ATTEMPTS}. Retrying with fresh fingerprint...`,
+          );
+          await browser.close();
+          browser = null;
+          // Exponential backoff
+          await this.sleep(3000 * attempt + Math.random() * 2000);
+          continue;
+        }
 
-          const details = await page.evaluate(() => {
-            const name = document.querySelector('h1')?.textContent || 'N/A';
+        // Wait for results card
+        await page
+          .waitForSelector(
+            'div[data-testid="serp-ia-card"], h3 a[href*="/biz/"]',
+            {
+              timeout: 15000,
+            },
+          )
+          .catch(() => null);
 
-            // Yelp detail page par address aksar 'address' tag ya specific class mein hota hai
-            const addressEl = document.querySelector('address');
-            const address = addressEl?.textContent?.trim() || 'N/A';
+        const businessLinks: string[] = await page.evaluate(() => {
+          const out = new Set<string>();
+          // Primary selector
+          document
+            .querySelectorAll('div[data-testid="serp-ia-card"] h3 a')
+            .forEach((a) => {
+              const href = (a as HTMLAnchorElement).href;
+              if (href.includes('/biz/') && !href.includes('adredir')) {
+                out.add(href.split('?')[0]);
+              }
+            });
+          // Fallback selector
+          if (out.size === 0) {
+            document.querySelectorAll('a[href*="/biz/"]').forEach((a) => {
+              const href = (a as HTMLAnchorElement).href;
+              if (!href.includes('adredir')) out.add(href.split('?')[0]);
+            });
+          }
+          return [...out];
+        });
 
-            // Phone dhundne ke liye text scan
-            const phoneEl = Array.from(document.querySelectorAll('p')).find(
-              (p) =>
-                /\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})/.test(
-                  p.innerText,
-                ),
-            );
-            const phone = phoneEl ? phoneEl.innerText.trim() : 'N/A';
-
-            return { name, address, phone };
-          });
-          finalResults.push({
-            ...details,
-            source: 'Yelp',
-            locationLink: link,
-            timestamp: new Date().toISOString(),
-          });
-        } catch (e) {
-          console.warn(`Failed to fetch details for ${link}: ${e}`);
-
+        if (businessLinks.length === 0) {
+          this.logger.warn(`No results found on attempt ${attempt}`);
+          await browser.close();
+          browser = null;
+          if (attempt < MAX_ATTEMPTS) {
+            await this.sleep(2000 * attempt);
+            continue;
+          }
           return [];
         }
+
+        const finalResults: LocationResponseDto[] = [];
+
+        for (const link of businessLinks.slice(0, 5)) {
+          try {
+            await page.goto(link, {
+              waitUntil: 'domcontentloaded',
+              timeout: 25000,
+            });
+            await this.sleep(800 + Math.random() * 1200);
+
+            // Detail page pe captcha aaya to skip
+            if (await this.isCaptchaPresent(page)) {
+              this.logger.warn(`CAPTCHA on detail page, skipping: ${link}`);
+              continue;
+            }
+
+            const details = await page.evaluate(() => {
+              const name =
+                document.querySelector('h1')?.textContent?.trim() || 'N/A';
+              const address =
+                document.querySelector('address')?.textContent?.trim() || 'N/A';
+
+              const phoneRegex =
+                /\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/;
+              let phone = 'N/A';
+              const candidates = Array.from(
+                document.querySelectorAll('p, span, div'),
+              );
+              for (const el of candidates) {
+                const text = (el as HTMLElement).innerText || '';
+                const match = text.match(phoneRegex);
+                if (match && text.length < 50) {
+                  phone = match[0];
+                  break;
+                }
+              }
+              return { name, address, phone };
+            });
+
+            finalResults.push({
+              ...details,
+              source: 'Yelp',
+              locationLink: link,
+              timestamp: new Date().toISOString(),
+            });
+          } catch (e) {
+            this.logger.warn(`Failed to fetch details for ${link}: ${e}`);
+            // Don't break — keep collecting whatever you can
+            continue;
+          }
+        }
+
+        await browser.close();
+        return finalResults;
+      } catch (err) {
+        this.logger.error(`Attempt ${attempt} failed: ${err}`);
+        if (browser) {
+          await browser.close().catch(() => null);
+        }
+        if (attempt < MAX_ATTEMPTS) {
+          await this.sleep(2000 * attempt);
+          continue;
+        }
       }
-
-      return finalResults;
-    } finally {
-      await browser.close();
     }
-  }
-  // async saveResults(results: LocationResponseDto[]) {
-  //   for (const item of results) {
-  //     // 1. Check karein kya ye link pehle se DB mein hai?
-  //     const existing = await this.locationRepo.findOne({
-  //       where: { locationLink: item.locationLink },
-  //     });
 
-  //     if (!existing) {
-  //       const newLocation = this.locationRepo.create(item);
-  //       await this.locationRepo.save(newLocation);
-  //     } else {
-  //       // console.log(`⏭️ Skipping duplicate: ${item.name}`);
-  //       await this.locationRepo.update(existing.id, item);
-  //     }
-  //   }
-  // }
+    // Sab attempts fail → empty array
+    return [];
+  }
 }
