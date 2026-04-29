@@ -9,6 +9,7 @@ import {
   OpendiScraperService,
   ProfileCanadaScraperService,
   IGlobalScraperService,
+  InfobelScraperService,
 } from './multiService';
 import {
   InstagramScraperService,
@@ -19,13 +20,13 @@ import {
   MerchantCircleScraperService,
   MyLocalServicesScraperService,
 } from './demoService';
-
-
+import { ScraperGateway } from './scraper.gateway';
 
 @Module({
   // imports: [TypeOrmModule.forFeature([Location])],
   controllers: [ScraperController],
   providers: [
+    ScraperGateway,
     ScraperService,
     GoogleMapsScraperService,
     YelpScraperService,
@@ -45,6 +46,7 @@ import {
     // CylexScraperService,
     // InfobelScraperService,
     MyLocalServicesScraperService,
+    InfobelScraperService,
   ],
 })
 export class ScraperModule {}
