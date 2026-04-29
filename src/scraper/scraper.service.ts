@@ -81,104 +81,120 @@ export class ScraperService {
     name: string,
     location: string,
     phone: string,
+    onResultReady?: (data: any) => void,
   ): Promise<any[]> {
     // await this.locationRepo.clear();
 
-    const results = await Promise.all([
-      this.safeScrape(
-        this.googleMapsScraperService.scrapeGoogleMaps(`${name} ${location}`),
-        'Google Maps',
-      ),
-      this.safeScrape(
-        this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
-        'Yelp',
-      ),
-      // this.safeScrape(this.bingScraperService.scrapeBing(name, location), 'Bing'),
-      this.safeScrape(this.n49Service.scrapeN49(name, location), 'N49'),
-      this.safeScrape(
-        this.mapquestService.scrapeMapQuest(`${name} ${location}`),
-        'MapQuest',
-      ),
-      this.safeScrape(
-        this.opendiService.scrapeOpendi(name, location),
-        'Opendi',
-      ),
-      this.safeScrape(
-        this.profileCanadaService.scrapeProfileCanada(name, location),
-        'Profile Canada',
-      ),
-      this.safeScrape(this.instagramService.scrapeInstagram(name), 'Instagram'),
-      this.safeScrape(
-        this.wheretoScraperService.scrapeWhereTo(name, location),
-        'WhereTo',
-      ),
-      this.safeScrape(
-        this.hotfrogScraperService.scrapeHotfrog(name, location),
-        'Hotfrog',
-      ),
-      this.safeScrape(
-        this.facebookScraperService.scrapeFacebook(name),
-        'Facebook',
-      ),
-      this.safeScrape(
-        this.iGlobalScraperService.scrapeIGlobal(name),
-        'IGlobal',
-      ),
-      this.safeScrape(
-        this.goLocalScraperService.scrapeGoLocal(name, location),
-        'GoLocal247',
-      ),
-      this.safeScrape(
-        this.merchantCircleScraperService.scrapeMerchantCircle(name, location),
-        'MerchantCircle',
-      ),
-      // this.safeScrape(this.cylexScraperService.scrapeCylex(name, location), 'Cylex'),
-      // this.safeScrape(this.brownbookScraperService.scrapeBrownbook(name, location), 'Brownbook'),
-      this.safeScrape(
-        this.infobelScraperService.scrapeInfobel(name, location),
-        'Infobel',
-      ),
-    ]);
+    const tasks = [
+      {
+        promise: this.googleMapsScraperService.scrapeGoogleMaps(
+          `${name} ${location}`,
+        ),
+        source: 'Google Maps',
+      },
+      {
+        promise: this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
+        source: 'Yelp',
+      },
+      { promise: this.n49Service.scrapeN49(name, location), source: 'N49' },
+      {
+        promise: this.mapquestService.scrapeMapQuest(`${name} ${location}`),
+        source: 'MapQuest',
+      },
+      {
+        promise: this.opendiService.scrapeOpendi(name, location),
+        source: 'Opendi',
+      },
+      {
+        promise: this.profileCanadaService.scrapeProfileCanada(name, location),
+        source: 'Profile Canada',
+      },
+      {
+        promise: this.instagramService.scrapeInstagram(name),
+        source: 'Instagram',
+      },
+      {
+        promise: this.wheretoScraperService.scrapeWhereTo(name, location),
+        source: 'WhereTo',
+      },
+      {
+        promise: this.hotfrogScraperService.scrapeHotfrog(name, location),
+        source: 'Hotfrog',
+      },
+      {
+        promise: this.facebookScraperService.scrapeFacebook(name),
+        source: 'Facebook',
+      },
+      {
+        promise: this.iGlobalScraperService.scrapeIGlobal(name),
+        source: 'IGlobal',
+      },
+      {
+        promise: this.goLocalScraperService.scrapeGoLocal(name, location),
+        source: 'GoLocal247',
+      },
+      {
+        promise: this.merchantCircleScraperService.scrapeMerchantCircle(
+          name,
+          location,
+        ),
+        source: 'MerchantCircle',
+      },
+      // { promise: this.cylexScraperService.scrapeCylex(name, location), source: 'Cylex' },
+      // { promise: this.brownbookScraperService.scrapeBrownbook(name, location), source: 'Brownbook' },
+      {
+        promise: this.infobelScraperService.scrapeInfobel(name, location),
+        source: 'Infobel',
+      },
+    ];
 
-    const combinedData = results.flat();
+    const processTask = async (task: {
+      promise: Promise<any>;
+      source: string;
+    }) => {
+      const resultsArray = await this.safeScrape(task.promise, task.source);
+      const item = resultsArray[0];
 
-    return combinedData.map((item) => {
+      // Aapka existing formatting logic
       const isEmpty = !item.name && !item.address && !item.phone;
+      let finalResult;
 
       if (isEmpty) {
-        return {
+        finalResult = {
           scraped: {},
           meta: {
             source: item.source,
             locationLink: item.locationLink || '',
-            timestamp: item.timestamp || new Date().toISOString(),
+            timestamp: new Date().toISOString(),
           },
-          audit: {
-            status: 'Mismatch',
-            results: {},
+          audit: { status: 'Mismatch', results: {} },
+        };
+      } else {
+        const auditResult = this.checkNAPMatch(item, name, phone, location);
+        finalResult = {
+          scraped:
+            auditResult.status === 'Verified'
+              ? { name: item.name, phone: item.phone, address: item.address }
+              : {},
+          meta: {
+            source: item.source,
+            locationLink: item.locationLink || '',
+            timestamp: new Date().toISOString(),
           },
+          audit: auditResult,
         };
       }
 
-      const auditResult = this.checkNAPMatch(item, name, phone, location);
-      const isVerified = auditResult.status === 'Verified';
+      // AGAR callback function pass kiya gaya hai (Websocket case), toh turant bhej do
+      if (onResultReady) {
+        onResultReady(finalResult);
+      }
 
-      return {
-        scraped: isVerified
-          ? {
-              name: item.name || '',
-              phone: item.phone || '',
-              address: item.address || '',
-            }
-          : {},
-        meta: {
-          source: item.source,
-          locationLink: item.locationLink || '',
-          timestamp: item.timestamp || new Date().toISOString(),
-        },
-        audit: auditResult,
-      };
-    });
+      return finalResult;
+    };
+
+    // Saare tasks ko parallel mein chalao
+    return Promise.all(tasks.map((task) => processTask(task)));
   }
 
   checkNAPMatch(

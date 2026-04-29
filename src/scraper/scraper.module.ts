@@ -19,11 +19,13 @@ import {
   GoLocalScraperService,
   MerchantCircleScraperService,
 } from './demoService';
+import { ScraperGateway } from './scraper.gateway';
 
 @Module({
   // imports: [TypeOrmModule.forFeature([Location])],
   controllers: [ScraperController],
   providers: [
+    ScraperGateway,
     ScraperService,
     GoogleMapsScraperService,
     YelpScraperService,
