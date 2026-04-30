@@ -346,7 +346,6 @@ export class ScraperService {
         address: safeScraped.address || '',
       },
       matched: {
-        // These will naturally be false if the fields are missing
         name: !!isNameMatch,
         phone: !!isPhoneMatch,
         address: !!isAddrMatch,
