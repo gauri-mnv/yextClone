@@ -1596,6 +1596,13 @@
   resolved "https://registry.npmjs.org/@xtuc/long/-/long-4.2.2.tgz"
   integrity sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==
 
+"2captcha-ts@^2.4.1":
+  version "2.4.1"
+  resolved "https://registry.npmjs.org/2captcha-ts/-/2captcha-ts-2.4.1.tgz"
+  integrity sha512-xYQhm0ft3YlnRVghdPrGRQaXPodcQ5lIs3Yaob7SH0RUAolPx1fAm5cS/Bzel8YEHVqQnV+Xjrua/1ql51xGpg==
+  dependencies:
+    node-fetch "^2.6.1"
+
 "2captcha@^3.0.5-2":
   version "3.0.5-2"
   resolved "https://registry.npmjs.org/2captcha/-/2captcha-3.0.5-2.tgz"

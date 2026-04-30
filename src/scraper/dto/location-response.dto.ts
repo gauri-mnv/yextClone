@@ -5,4 +5,6 @@ export class LocationResponseDto {
   locationLink: string;
   source: string;
   timestamp: string;
+  status?: string;
+  // foundAt: string;
 }

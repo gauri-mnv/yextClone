@@ -8,7 +8,6 @@ import { chromium as chromiumExtra } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import type { Browser, BrowserContext, Page } from 'playwright';
 
-// Stealth plugin register (sirf ek baar at module load)
 chromiumExtra.use(StealthPlugin());
 
 @Injectable()
@@ -87,7 +86,7 @@ export class YelpScraperService {
   private async newStealthContext(browser: Browser): Promise<BrowserContext> {
     const context = await browser.newContext({
       userAgent: this.pickUA(),
-      viewport: { width: 1366, height: 768 },
+      viewport: { width: 1366, height: 800 },
       locale: 'en-US',
       timezoneId: 'America/New_York',
       extraHTTPHeaders: {
@@ -137,16 +136,42 @@ export class YelpScraperService {
 
     return context;
   }
+  private async checkAndLogStatus(page: Page, step: string) {
+    const url = page.url();
+    const title = await page.title();
+    const isCaptcha = await page
+      .isVisible(
+        'div#px-captcha, div.px-captcha-container, iframe[src*="perimeterx"]',
+      )
+      .catch(() => false);
+
+    this.logger.log(
+      `[Step: ${step}] URL: ${url} | Title: ${title} | CAPTCHA Visible: ${isCaptcha}`,
+    );
+
+    if (isCaptcha) {
+      this.logger.error(
+        `🚨 BLOCKED: PerimeterX Verification screen detected at ${step}.`,
+      );
+      const audioBtn = await page.$('button.alan-button'); // Common selector for PX audio
+      if (audioBtn) {
+        this.logger.log('Audio verification option found.');
+      } else {
+        return;
+      }
+    }
+  }
 
   async scrapeYelp(
     businessName: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
-    const MAX_ATTEMPTS = 3;
+    const MAX_ATTEMPTS = 1;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       let browser: Browser | null = null;
       try {
+        this.logger.log(`Starting attempt ${attempt}...`);
         browser = await this.launchBrowser();
         const context = await this.newStealthContext(browser);
         const page = await context.newPage();
@@ -154,22 +179,25 @@ export class YelpScraperService {
         const searchUrl = `https://www.yelp.com/search?find_desc=${encodeURIComponent(
           businessName,
         )}&find_loc=${encodeURIComponent(location)}`;
-
-        // Direct search URL pe jao — homepage hop kabhi-kabhi suspicious lagta hai
         await page.goto(searchUrl, {
-          waitUntil: 'domcontentloaded',
-          timeout: 30000,
+          waitUntil: 'networkidle',
+          timeout: 50000,
         });
-
+        this.logger.log(`Navigating to: ${searchUrl}`);
         // Random human delay
         await this.sleep(1500 + Math.random() * 2500);
         await this.humanScroll(page);
         await this.sleep(800 + Math.random() * 1200);
 
+        await this.checkAndLogStatus(page, 'Initial Load');
+
+        // Check if we are stuck on the verification page
+
         if (await this.isCaptchaPresent(page)) {
           this.logger.warn(
             `CAPTCHA detected on attempt ${attempt}/${MAX_ATTEMPTS}. Retrying with fresh fingerprint...`,
           );
+          await this.sleep(5000);
           await browser.close();
           browser = null;
           // Exponential backoff
@@ -187,9 +215,27 @@ export class YelpScraperService {
           )
           .catch(() => null);
 
-        const businessLinks: string[] = await page.evaluate(() => {
+        const businessLinks: string[] = await page.evaluate(async () => {
+          this.logger.log(`Page Title: ${await page.title()}`);
+          try {
+            await page.waitForSelector('div[data-testid="serp-ia-card"]', {
+              timeout: 15000,
+            });
+          } catch (e) {
+            this.logger.error(
+              'Failed to find business cards. Saving screenshot for debug.',
+            );
+            await page.screenshot({ path: `error-attempt-${attempt}.png` });
+
+            // Log the first 500 characters of HTML to see if we are still blocked
+            const body = await page.evaluate(() =>
+              document.body.innerText.substring(0, 500),
+            );
+            this.logger.debug(`Page snippet: ${body}`);
+
+            throw e; // Rethrow to trigger attempt loop
+          }
           const out = new Set<string>();
-          // Primary selector
           document
             .querySelectorAll('div[data-testid="serp-ia-card"] h3 a')
             .forEach((a) => {
@@ -263,6 +309,7 @@ export class YelpScraperService {
               source: 'Yelp',
               locationLink: link,
               timestamp: new Date().toISOString(),
+              // foundAt: new Date().toISOString(),
             });
           } catch (e) {
             this.logger.warn(`Failed to fetch details for ${link}: ${e}`);
@@ -270,6 +317,8 @@ export class YelpScraperService {
             continue;
           }
         }
+
+        this.logger.log('Success! Page loaded without instant block.');
 
         await browser.close();
         return finalResults;
@@ -284,8 +333,6 @@ export class YelpScraperService {
         }
       }
     }
-
-    // Sab attempts fail → empty array
     return [];
   }
 }

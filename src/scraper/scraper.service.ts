@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
 import { Injectable } from '@nestjs/common';
@@ -20,16 +21,15 @@ import {
   GoLocalScraperService,
   MerchantCircleScraperService,
 } from './demoService';
-
-// import { Location } from './location.entity';
-// import { InjectRepository } from '@nestjs/typeorm';
-// import { Repository } from 'typeorm';
+import { Location } from './location.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class ScraperService {
   constructor(
-    // @InjectRepository(Location)
-    // private locationRepo: Repository<Location>,
+    @InjectRepository(Location)
+    private locationRepo: Repository<Location>,
     private googleMapsScraperService: GoogleMapsScraperService,
     private yelpScraperService: YelpScraperService,
     // private bingScraperService: BingScraperService,
@@ -49,6 +49,63 @@ export class ScraperService {
     private infobelScraperService: InfobelScraperService,
   ) {}
 
+  private async syncWithDatabase(
+    scrapedData: any,
+    auditStatus: string,
+  ): Promise<any> {
+    if (!scrapedData?.locationLink) return scrapedData;
+
+    try {
+      const existing: any = await this.locationRepo.findOne({
+        where: { locationLink: scrapedData.locationLink },
+      });
+
+      const newData = {
+        name: scrapedData.name || '',
+        address: scrapedData.address || '',
+        phone: scrapedData.phone || '',
+        locationLink: scrapedData.locationLink,
+        source: scrapedData.source,
+        status: auditStatus,
+      };
+      if (existing) {
+        const hasChanged =
+          existing.name !== newData.name ||
+          existing.address !== newData.address ||
+          existing.phone !== newData.phone ||
+          existing.status !== newData.status;
+
+        if (hasChanged) {
+          const updated = await this.locationRepo.save({
+            ...existing,
+            ...newData,
+          });
+          return {
+            ...updated,
+            timestamp: updated.foundAt.toISOString(),
+          };
+        }
+        return {
+          ...existing,
+          timestamp: existing.foundAt.toISOString(),
+          status: existing.status,
+        };
+      } else {
+        const saved = await this.locationRepo.save(
+          this.locationRepo.create(newData),
+        );
+        return {
+          ...saved,
+          timestamp: saved.foundAt.toISOString(),
+        };
+      }
+    } catch (error) {
+      console.error(
+        `[Sync Error] ${scrapedData.source} Failed to sync with database: ${error}`,
+      );
+      return scrapedData;
+    }
+  }
   private async safeScrape(
     scraperPromise: Promise<any>,
     sourceName: string,
@@ -59,6 +116,7 @@ export class ScraperService {
       phone: '',
       locationLink: '',
       source: sourceName,
+      status: 'Pending',
       timestamp: new Date().toISOString(),
     };
     try {
@@ -67,7 +125,15 @@ export class ScraperService {
         return [defaultObj];
       }
       const data = Array.isArray(result) ? result : [result];
-      return data.map((item: any) => ({ ...item, source: sourceName }));
+      const itemsWithSource = data.map((item: any) => ({
+        ...item,
+        source: sourceName,
+      }));
+
+      // const syncedData = await Promise.all(
+      //   itemsWithSource.map((item: any) => this.syncWithDatabase(item, 'Pending')),
+      // );
+      return itemsWithSource;
     } catch (error: any) {
       const errMsg = error?.message || 'Unknown error';
       console.error(
@@ -157,6 +223,10 @@ export class ScraperService {
 
       // Aapka existing formatting logic
       const isEmpty = !item.name && !item.address && !item.phone;
+      const auditResult = this.checkNAPMatch(item, name, phone, location);
+
+      const syncedData = await this.syncWithDatabase(item, auditResult.status);
+
       let finalResult;
 
       if (isEmpty) {
@@ -170,7 +240,6 @@ export class ScraperService {
           audit: { status: 'Mismatch', results: {} },
         };
       } else {
-        const auditResult = this.checkNAPMatch(item, name, phone, location);
         finalResult = {
           scraped:
             auditResult.status === 'Verified'
@@ -179,21 +248,19 @@ export class ScraperService {
           meta: {
             source: item.source,
             locationLink: item.locationLink || '',
-            timestamp: new Date().toISOString(),
+            timestamp: syncedData.foundAt || new Date().toISOString(),
           },
           audit: auditResult,
         };
       }
-
-      // AGAR callback function pass kiya gaya hai (Websocket case), toh turant bhej do
       if (onResultReady) {
         onResultReady(finalResult);
       }
-
+      console.log(`Result from ${task.source}:`, finalResult);
       return finalResult;
     };
 
-    // Saare tasks ko parallel mein chalao
+    // all tasks in parallel mein
     return Promise.all(tasks.map((task) => processTask(task)));
   }
 
@@ -240,7 +307,7 @@ export class ScraperService {
     const isNameMatch =
       cleanStr(scraped.name).includes(cleanStr(inputName)) ||
       cleanStr(inputName).includes(cleanStr(scraped.name));
-
+    const safeScraped = scraped || {};
     // Phone Match (Actual digits only)
     const isPhoneMatch =
       inputPhoneClean !== '' && scrapedPhoneClean === inputPhoneClean;
@@ -256,13 +323,17 @@ export class ScraperService {
 
     return {
       status: isVerified ? 'Verified' : 'Mismatch',
-      results: isVerified
-        ? {
-            name: scraped.name || '',
-            phone: scraped.phone || '',
-            address: scraped.address || '',
-          }
-        : {},
+      results: {
+        name: safeScraped.name || '',
+        phone: safeScraped.phone || '',
+        address: safeScraped.address || '',
+      },
+      matched: {
+        // These will naturally be false if the fields are missing
+        name: !!isNameMatch,
+        phone: !!isPhoneMatch,
+        address: !!isAddrMatch,
+      },
     };
   }
 }

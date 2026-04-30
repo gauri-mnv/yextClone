@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-       "strict": true,
+    "strict": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "resolvePackageJsonExports": true,
@@ -22,6 +22,6 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
-    "strictPropertyInitialization": false,
+    "strictPropertyInitialization": false
   }
 }
