@@ -81,7 +81,7 @@ export class OpendiScraperService {
 
           const extractedData = await newPage.evaluate((currentLink) => {
             const bizName =
-              document.querySelector('.name h2, h1')?.textContent || '-';
+              document.querySelector('.name h2, h1')?.textContent || '—';
             const getDDByDT = (term: string) => {
               const dt = Array.from(document.querySelectorAll('dt')).find(
                 (el) =>
@@ -93,13 +93,13 @@ export class OpendiScraperService {
               return dt ? dt.nextElementSibling?.textContent?.trim() : null;
             };
 
-            const address = getDDByDT('Address') || '-';
-            const place = getDDByDT('Place') || '';
-            const phone = getDDByDT('Landline') || getDDByDT('Phone') || '-';
+            const address = getDDByDT('Address') || '—';
+            const place = getDDByDT('Place') || '—';
+            const phone = getDDByDT('Landline') || getDDByDT('Phone') || '—';
             const website =
               document
                 .querySelector('dd a[href^="http"]')
-                ?.getAttribute('href') || '-';
+                ?.getAttribute('href') || '—';
 
             return {
               name: bizName.trim(),
@@ -115,7 +115,7 @@ export class OpendiScraperService {
             .replace(/[^a-z0-9]/g, '');
 
           // Skip if it's "Privacy Policy" or other junk
-          if (foundClean.includes('privacypolicy') || foundClean === '-')
+          if (foundClean.includes('privacypolicy') || foundClean === '—')
             continue;
 
           if (
@@ -134,7 +134,7 @@ export class OpendiScraperService {
             return finalResults;
           }
         } catch (e) {
-          console.log(`❌ [Opendi] Error deep searching: ${link} - ${e}`);
+          console.log(`❌ [Opendi] Error deep searching: ${link} — ${e}`);
         } finally {
           await newPage.close();
         }

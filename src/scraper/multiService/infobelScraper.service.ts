@@ -145,7 +145,7 @@ export class InfobelScraperService {
       // 4. More Info (Detail Page) par jayein
       await page.goto(businessUrl, { waitUntil: 'networkidle' });
       const finalData = await page.evaluate((sourceUrl) => {
-        const name = document.querySelector('h1')?.textContent?.trim() || '-';
+        const name = document.querySelector('h1')?.textContent?.trim() || '—';
 
         // 2. Address: Look for a container that likely has 'address' in its class or ID
         // Or look for text that contains common address patterns (numbers + street)
@@ -154,13 +154,13 @@ export class InfobelScraperService {
             .querySelector(
               '.address-text, .location-info, [itemprop="address"]',
             )
-            ?.textContent?.trim() || '-';
+            ?.textContent?.trim() || '—';
 
         // 3. Phone: Look specifically for the tel link
         const phoneLink = document.querySelector('a[href^="tel:"]');
         const phone = phoneLink
           ? phoneLink.textContent?.replace('Tel.', '').trim()
-          : '-';
+          : '—';
 
         // 4. Website: Find the external link
         const website =
@@ -168,7 +168,7 @@ export class InfobelScraperService {
             document.querySelector(
               'a[href^="http"]:not([href*="infobel"])',
             ) as HTMLAnchorElement
-          )?.href || '-';
+          )?.href || '—';
 
         return {
           name,

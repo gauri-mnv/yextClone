@@ -283,13 +283,13 @@ export class YelpScraperService {
 
             const details = await page.evaluate(() => {
               const name =
-                document.querySelector('h1')?.textContent?.trim() || 'N/A';
+                document.querySelector('h1')?.textContent?.trim() || '—';
               const address =
-                document.querySelector('address')?.textContent?.trim() || 'N/A';
+                document.querySelector('address')?.textContent?.trim() || '—';
 
               const phoneRegex =
                 /\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/;
-              let phone = 'N/A';
+              let phone = '—';
               const candidates = Array.from(
                 document.querySelectorAll('p, span, div'),
               );

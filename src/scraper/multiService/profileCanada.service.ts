@@ -70,22 +70,22 @@ export class ProfileCanadaScraperService {
         const getName = () =>
           document
             .querySelector('h1, [itemprop="name"]')
-            ?.textContent?.trim() || '-';
+            ?.textContent?.trim() || '—';
         const getAddress = () => {
           const addr = document
             .querySelector('.address, #company_address, [itemprop="address"]')
             ?.textContent?.trim();
-          return addr ? addr.replace(/\s+/g, ' ') : '-';
+          return addr ? addr.replace(/\s+/g, ' ') : '—';
         };
         const getPhone = () =>
           document
             .querySelector('.phone, .tel, [itemprop="telephone"]')
-            ?.textContent?.trim() || '-';
+            ?.textContent?.trim() || '—';
         const getWebsite = () => {
           const webBtn = document.querySelector(
             'a[href*="http"]:not([href*="profilecanada"])',
           );
-          return webBtn ? (webBtn as HTMLAnchorElement).href : '-';
+          return webBtn ? (webBtn as HTMLAnchorElement).href : '—';
         };
 
         return {

@@ -24,6 +24,19 @@ Wright Smiles Pediatric Dentistry
 50 Remick Blvd, Springboro, OH
 (937) 885-2222
 
+---
+
+12th & 8th Dental
+1221 8 St SW #121, Calgary, Alberta T2R0L4
+(587) 843-4946 | +14034751288
+
+---
+
+404 Dental
+1091 Gorham St. Suite 108, Newmarket, Ontario L3Y8X7
+(365) 363-0478
+
+
 ```
 
 

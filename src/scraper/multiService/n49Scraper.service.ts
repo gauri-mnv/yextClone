@@ -93,10 +93,10 @@ export class N49ScraperService {
           });
 
           finalResults.push({
-            name: extractedData.name !== '' ? extractedData.name : '-',
+            name: extractedData.name !== '' ? extractedData.name : '—',
             address: extractedData.address,
-            phone: extractedData.phone !== '' ? extractedData.phone : '-',
-            locationLink: newPage.url(),
+            phone: extractedData.phone !== '' ? extractedData.phone : '—',
+            locationLink: newPage.url() || '—',
             source: 'N49',
             timestamp: new Date().toISOString(),
           });

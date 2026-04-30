@@ -52,11 +52,11 @@ export class GoogleMapsScraperService {
           const address =
             document
               .querySelector('button[data-item-id="address"]')
-              ?.textContent?.trim() || 'N/A';
+              ?.textContent?.trim() || '—';
           const phone =
             document
               .querySelector('button[data-tooltip*="phone"]')
-              ?.textContent?.trim() || 'In address';
+              ?.textContent?.trim() || '—';
           return [
             {
               name: exactName,
@@ -71,12 +71,12 @@ export class GoogleMapsScraperService {
           document.querySelectorAll('div[role="article"]'),
         );
         return items.map((item) => ({
-          name: item.querySelector('.qBF1Pd')?.textContent || 'N/A',
+          name: item.querySelector('.qBF1Pd')?.textContent || '—',
           address:
             Array.from(item.querySelectorAll('.W4Efsd'))
               .map((el) => el.textContent || '')
-              .find((d) => d.includes(',') || d.length > 10) || 'N/A',
-          phone: item.querySelector('.Us7ffb')?.textContent || 'N/A',
+              .find((d) => d.includes(',') || d.length > 10) || '—',
+          phone: item.querySelector('.Us7ffb')?.textContent || '—',
 
           locationLink:
             (item.querySelector('a.hfpxzc') as HTMLAnchorElement)?.href || '',
@@ -85,7 +85,7 @@ export class GoogleMapsScraperService {
       const finalResults: LocationResponseDto[] = [];
 
       for (const item of scrapedData) {
-        if (item.name !== 'N/A') {
+        if (item.name !== '—') {
           // const newLoc = this.locationRepo.create({
           //   name: item.name,
           //   address: item.address,

@@ -11,7 +11,9 @@ import { ScrapeRequestDto } from './dto/scrape-request.dto';
 
 @WebSocketGateway({
   cors: {
-    origin: '*', //allow all origins for simplicity, adjust in production
+    origin: ['*', 'http://localhost:3000'], //allow all origins for simplicity, adjust in production
+    methods: ['GET', 'POST'],
+    credentials: true,
   },
 })
 export class ScraperGateway {

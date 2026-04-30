@@ -60,19 +60,19 @@ export class IGlobalScraperService {
         const name =
           document
             .querySelector('h1.company-profile-name')
-            ?.textContent?.trim() || '-';
+            ?.textContent?.trim() || '—';
         const addressEl = document.querySelector('a.card-location span');
-        const address = addressEl?.textContent?.trim() || '-';
+        const address = addressEl?.textContent?.trim() || '—';
 
         const phone =
-          document.querySelector('a[href^="tel:"]')?.textContent?.trim() || '-';
+          document.querySelector('a[href^="tel:"]')?.textContent?.trim() || '—';
 
         const website =
           (
             document.querySelector(
               'a[href^="http"]:not([href*="iglobal"])',
             ) as HTMLAnchorElement
-          )?.href || '-';
+          )?.href || '—';
 
         return {
           name,
