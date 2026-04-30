@@ -11,7 +11,7 @@ import { ScrapeRequestDto } from './dto/scrape-request.dto';
 
 @WebSocketGateway({
   cors: {
-    origin: '*', // Production mein ise apne frontend URL se replace karein
+    origin: '*', //allow all origins for simplicity, adjust in production
   },
 })
 export class ScraperGateway {
