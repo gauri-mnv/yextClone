@@ -230,14 +230,31 @@ export class ScraperService {
       let finalResult;
 
       if (isEmpty) {
+        // Backend format helper
         finalResult = {
-          scraped: {},
+          scraped: {
+            name: '',
+            phone: '',
+            address: '',
+          },
           meta: {
             source: item.source,
             locationLink: item.locationLink || '',
             timestamp: new Date().toISOString(),
           },
-          audit: { status: 'Mismatch', results: {} },
+          audit: {
+            status: auditResult.status || 'Mismatch',
+            results: auditResult.results || {
+              name: '',
+              phone: '',
+              address: '',
+            },
+            matched: auditResult.matched || {
+              name: false,
+              phone: false,
+              address: false,
+            },
+          },
         };
       } else {
         finalResult = {
