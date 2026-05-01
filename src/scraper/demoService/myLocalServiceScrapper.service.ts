@@ -208,7 +208,17 @@ export class MyLocalServicesScraperService {
                 },
             ];
         } catch (error) {
-            console.error('[MLS] Scraper Error:', error);
+            const errMsg = (error as Error)?.message ?? '';
+            const isTimeoutError =
+                /timeout/i.test(errMsg) ||
+                (error as { name?: string })?.name === 'TimeoutError' ||
+                (error as { constructor?: { name?: string } })?.constructor?.name === 'TimeoutError';
+
+            if (isTimeoutError) {
+                console.error('[MLS] Data not found in the given time');
+            } else {
+                console.error('[MLS] Scraper failed:', errMsg || 'Unknown error');
+            }
             await page.screenshot({ path: 'mls-error.png' }).catch(() => {});
             return [];
         } finally {

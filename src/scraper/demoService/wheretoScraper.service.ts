@@ -113,18 +113,4 @@ export class WhereToScraperService {
       await browser.close();
     }
   }
-
-  // async saveResults(results: LocationResponseDto[]) {
-  //   for (const item of results) {
-  //     const existing = await this.locationRepo.findOne({
-  //       where: { locationLink: item.locationLink },
-  //     });
-
-  //     if (!existing) {
-  //       await this.locationRepo.save(this.locationRepo.create(item));
-  //     } else {
-  //       await this.locationRepo.update(existing.id, item);
-  //     }
-  //   }
-  // }
 }
