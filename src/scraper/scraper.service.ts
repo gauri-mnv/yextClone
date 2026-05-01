@@ -67,15 +67,25 @@ export class ScraperService {
     try {
       const result = await scraperPromise;
       if (!result || (Array.isArray(result) && result.length === 0)) {
+        console.error(`[${sourceName}] Data not found in the given time`);
         return [defaultObj];
       }
       const data = Array.isArray(result) ? result : [result];
       return data.map((item: any) => ({ ...item, source: sourceName }));
     } catch (error: any) {
       const errMsg = error?.message || 'Unknown error';
-      console.error(
-        `[Scraper Error] ${sourceName} failed: ${errMsg.split('\n')[0]}`,
-      );
+      const isTimeoutError =
+        /timeout/i.test(errMsg) ||
+        error?.name === 'TimeoutError' ||
+        error?.constructor?.name === 'TimeoutError';
+
+      if (isTimeoutError) {
+        console.error(`[${sourceName}] Data not found in the given time`);
+      } else {
+        console.error(
+          `[Scraper Error] ${sourceName} failed: ${errMsg.split('\n')[0]}`,
+        );
+      }
       return [defaultObj];
     }
   }

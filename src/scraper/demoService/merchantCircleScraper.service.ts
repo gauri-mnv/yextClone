@@ -128,7 +128,17 @@ export class MerchantCircleScraperService {
                 },
             ];
         } catch (error) {
-            console.error('Scraper Error:', error);
+            const errMsg = (error as Error)?.message ?? '';
+            const isTimeoutError =
+                /timeout/i.test(errMsg) ||
+                (error as { name?: string })?.name === 'TimeoutError' ||
+                (error as { constructor?: { name?: string } })?.constructor?.name === 'TimeoutError';
+
+            if (isTimeoutError) {
+                console.error('[MerchantCircle] Data not found in the given time');
+            } else {
+                console.error('[MerchantCircle] Scraper failed:', errMsg || 'Unknown error');
+            }
             await page.screenshot({ path: 'merchantcircle-error.png' });
             return [];
         } finally {
