@@ -243,17 +243,18 @@ export class ScraperService {
             timestamp: new Date().toISOString(),
           },
           audit: {
-            status: auditResult.status || 'Mismatch',
-            results: auditResult.results || {
+            status: 'Mismatch',
+            results: {
               name: '',
               phone: '',
               address: '',
             },
-            matched: auditResult.matched || {
+            matched: {
               name: false,
               phone: false,
               address: false,
             },
+            score: 0,
           },
         };
       } else {
@@ -273,7 +274,7 @@ export class ScraperService {
       if (onResultReady) {
         onResultReady(finalResult);
       }
-      console.log(`Result from ${task.source}:`, finalResult);
+      // console.log(`Result from ${task.source}:`, finalResult);
       return finalResult;
     };
 
@@ -287,6 +288,20 @@ export class ScraperService {
     inputPhone: string,
     inputLocation: string,
   ) {
+    const checkNameMatch = (scrapedName: any, inputName: any) => {
+      if (!scrapedName || !inputName) return false;
+      const sName = String(scrapedName).toLowerCase();
+      const iName = String(inputName).toLowerCase();
+      if (sName.includes(iName) || iName.includes(sName)) return true;
+
+      const inputParts = iName
+        .split(/[\s,]+/)
+        .filter((part) => part.length >= 2);
+      if (inputParts.length === 0) return false;
+
+      const matches = inputParts.filter((part) => sName.includes(part));
+      return matches.length / inputParts.length >= 0.4;
+    };
     const checkAddressMatch = (scrapedAddr: any, inputAddr: any) => {
       if (!scrapedAddr || !inputAddr) return false;
 
@@ -296,11 +311,11 @@ export class ScraperService {
       if (sAddr.includes(iAddr) || iAddr.includes(sAddr)) return true;
       const inputParts = iAddr
         .split(/[\s,]+/)
-        .filter((part) => part.length > 2);
+        .filter((part) => part.length >= 2);
       if (inputParts.length === 0) return false;
 
       const matches = inputParts.filter((part) => sAddr.includes(part));
-      return matches.length / inputParts.length >= 0.6;
+      return matches.length / inputParts.length >= 0.4;
     };
 
     const cleanPhone = (p: any) => {
@@ -313,17 +328,17 @@ export class ScraperService {
     const inputPhoneClean = cleanPhone(inputPhone);
     const scrapedPhoneClean = cleanPhone(scraped.phone);
 
-    const cleanStr = (s: any) =>
-      s
-        ? String(s)
-            .toLowerCase()
-            .replace(/[^a-z0-9]/g, '')
-        : '';
+    // const cleanStr = (s: any) =>
+    //   s
+    //     ? String(s)
+    //         .toLowerCase()
+    //         .replace(/[^a-z0-9]/g, '')
+    //     : '';
 
     // Name Match
-    const isNameMatch =
-      cleanStr(scraped.name).includes(cleanStr(inputName)) ||
-      cleanStr(inputName).includes(cleanStr(scraped.name));
+    const isNameMatch = checkNameMatch(scraped.name, inputName);
+    // cleanStr(scraped.name).includes(cleanStr(inputName)) ||
+    // cleanStr(inputName).includes(cleanStr(scraped.name));
     const safeScraped = scraped || {};
     // Phone Match (Actual digits only)
     const isPhoneMatch =
@@ -332,11 +347,25 @@ export class ScraperService {
     const isAddrMatch = checkAddressMatch(scraped.address, inputLocation);
 
     let matchCount = 0;
+    let score = 0;
     if (isNameMatch) matchCount++;
     if (isPhoneMatch) matchCount++;
     if (isAddrMatch) matchCount++;
 
     const isVerified = matchCount >= 2;
+    if (matchCount === 0 || !matchCount) {
+      score = 0;
+      // console.log(`0/3 : ${score}%`);
+    } else if (matchCount === 1) {
+      score = Math.round((matchCount / 3) * 100);
+      // console.log(`1/3 : ${score}%`);
+    } else if (matchCount === 2) {
+      score = Math.round((matchCount / 3) * 100);
+      // console.log(`2/3 : ${score}%`);
+    } else if (matchCount === 3) {
+      score = Math.round((matchCount / 3) * 100);
+      // console.log(`3/3 : ${score}%`);
+    }
 
     return {
       status: isVerified ? 'Verified' : 'Mismatch',
@@ -350,6 +379,7 @@ export class ScraperService {
         phone: !!isPhoneMatch,
         address: !!isAddrMatch,
       },
+      score: score,
     };
   }
 }

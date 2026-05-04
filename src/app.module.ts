@@ -22,3 +22,6 @@ import { Location } from './scraper/location.entity';
   providers: [],
 })
 export class AppModule {}
+
+// DATABASE_URL=postgresql://postgres:admin@123@localhost:5432/yext_clone_db?schema=public
+// PORT = 6000
