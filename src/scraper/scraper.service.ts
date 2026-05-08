@@ -64,7 +64,6 @@ export class ScraperService {
         name: scrapedData.name || '',
         address: scrapedData.address || '',
         phone: scrapedData.phone || '',
-        locationLink: scrapedData.locationLink,
         source: scrapedData.source,
         status: auditStatus,
       };
@@ -114,7 +113,6 @@ export class ScraperService {
       name: '',
       address: '',
       phone: '',
-      locationLink: '',
       source: sourceName,
       status: 'Pending',
       timestamp: new Date().toISOString(),
@@ -147,6 +145,7 @@ export class ScraperService {
     name: string,
     location: string,
     phone: string,
+    locationLink: string,
     onResultReady?: (data: any) => void,
   ): Promise<any[]> {
     // await this.locationRepo.clear();
@@ -154,7 +153,7 @@ export class ScraperService {
     const tasks = [
       {
         promise: this.googleMapsScraperService.scrapeGoogleMaps(
-          `${name} ${location}`,
+          `${name} ${location} `,
         ),
         source: 'Google Maps',
       },
@@ -227,6 +226,8 @@ export class ScraperService {
 
       const syncedData = await this.syncWithDatabase(item, auditResult.status);
 
+      // console.log('item', item);
+
       let finalResult;
 
       if (isEmpty) {
@@ -261,7 +262,11 @@ export class ScraperService {
         finalResult = {
           scraped:
             auditResult.status === 'Verified'
-              ? { name: item.name, phone: item.phone, address: item.address }
+              ? {
+                  name: item.name,
+                  phone: item.phone,
+                  address: item.address,
+                }
               : {},
           meta: {
             source: item.source,
@@ -327,13 +332,6 @@ export class ScraperService {
 
     const inputPhoneClean = cleanPhone(inputPhone);
     const scrapedPhoneClean = cleanPhone(scraped.phone);
-
-    // const cleanStr = (s: any) =>
-    //   s
-    //     ? String(s)
-    //         .toLowerCase()
-    //         .replace(/[^a-z0-9]/g, '')
-    //     : '';
 
     // Name Match
     const isNameMatch = checkNameMatch(scraped.name, inputName);

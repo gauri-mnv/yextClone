@@ -31,8 +31,8 @@ export class ScraperGateway {
       data.name,
       data.location,
       data.phone,
+      data.locationLink,
       (singleResult) => {
-        // Jaise hi ek source khatam hoga, ye block chalega
         client.emit('dataChunk', singleResult);
       },
     );
