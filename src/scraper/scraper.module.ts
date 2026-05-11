@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ScraperController } from './scraper.controller';
 import { ScraperService } from './scraper.service';
+import { Location } from './location.entity';
 import {
   GoogleMapsScraperService,
   YelpScraperService,
@@ -21,9 +22,10 @@ import {
   MyLocalServicesScraperService,
 } from './demoService';
 import { ScraperGateway } from './scraper.gateway';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
-  // imports: [TypeOrmModule.forFeature([Location])],
+  imports: [TypeOrmModule.forFeature([Location])],
   controllers: [ScraperController],
   providers: [
     ScraperGateway,

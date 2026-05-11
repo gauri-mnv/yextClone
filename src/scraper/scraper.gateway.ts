@@ -11,7 +11,9 @@ import { ScrapeRequestDto } from './dto/scrape-request.dto';
 
 @WebSocketGateway({
   cors: {
-    origin: '*', // Production mein ise apne frontend URL se replace karein
+    origin: ['*', 'http://localhost:3000'], //allow all origins for simplicity, adjust in production
+    methods: ['GET', 'POST'],
+    credentials: true,
   },
 })
 export class ScraperGateway {
@@ -29,8 +31,8 @@ export class ScraperGateway {
       data.name,
       data.location,
       data.phone,
+      data.locationLink,
       (singleResult) => {
-        // Jaise hi ek source khatam hoga, ye block chalega
         client.emit('dataChunk', singleResult);
       },
     );

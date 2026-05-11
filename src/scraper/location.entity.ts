@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -22,6 +23,7 @@ export class Location {
   @Column({ default: 'Google Maps' })
   source: string;
 
+  @Index()
   @Column({ type: 'varchar', unique: true })
   locationLink: string;
 
@@ -30,4 +32,7 @@ export class Location {
 
   @CreateDateColumn()
   foundAt: Date;
+
+  @Column({ default: 'Pending' })
+  status: string; // 'Verified' or 'Mismatch' store
 }

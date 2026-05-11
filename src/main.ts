@@ -9,9 +9,9 @@ async function bootstrap() {
   // Yeh line DTO ke decorators (@IsString etc.) ko active karti hai
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: false, // Jo fields DTO mein nahi hain, unhe remove kar do
-      forbidNonWhitelisted: true, // Agar extra fields aayin toh error throw karo
-      transform: true, // Data ko automatic sahi type mein badlo
+      whitelist: false,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
   app.enableCors();
