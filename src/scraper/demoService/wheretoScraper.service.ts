@@ -2,15 +2,10 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-// import { Location } from '../location.entity';
-// import { InjectRepository } from '@nestjs/typeorm';
-// import { Repository } from 'typeorm';
 
 @Injectable()
 export class WhereToScraperService {
   constructor() {
-    // @InjectRepository(Location)
-    // private locationRepo: Repository<Location>,
   }
 
   async scrapeWhereTo(
@@ -101,9 +96,6 @@ export class WhereToScraperService {
         source: 'WhereTo',
         timestamp: new Date().toISOString(),
       };
-
-      //Save to DB
-      // await this.saveResults([result]);
 
       return [result];
     } catch (error) {

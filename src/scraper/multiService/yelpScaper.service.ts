@@ -206,7 +206,7 @@ export class YelpScraperService {
         }
 
         // Wait for results card
-        await page
+        const selectorFound = await page
           .waitForSelector(
             'div[data-testid="serp-ia-card"], h3 a[href*="/biz/"]',
             {
@@ -215,26 +215,19 @@ export class YelpScraperService {
           )
           .catch(() => null);
 
-        const businessLinks: string[] = await page.evaluate(async () => {
-          this.logger.log(`Page Title: ${await page.title()}`);
-          try {
-            await page.waitForSelector('div[data-testid="serp-ia-card"]', {
-              timeout: 15000,
-            });
-          } catch (e) {
-            this.logger.error(
-              'Failed to find business cards. Saving screenshot for debug.',
-            );
-            await page.screenshot({ path: `error-attempt-${attempt}.png` });
+        if (!selectorFound) {
+          this.logger.error(
+            'Failed to find business cards. Saving screenshot for debug.',
+          );
+          await page.screenshot({ path: `error-attempt-${attempt}.png` });
+          const body = await page.evaluate(
+            () => document.body.innerText.substring(0, 500),
+          );
+          this.logger.debug(`Page snippet: ${body}`);
+          throw new Error('Yelp SERP cards not found');
+        }
 
-            // Log the first 500 characters of HTML to see if we are still blocked
-            const body = await page.evaluate(() =>
-              document.body.innerText.substring(0, 500),
-            );
-            this.logger.debug(`Page snippet: ${body}`);
-
-            throw e; // Rethrow to trigger attempt loop
-          }
+        const businessLinks: string[] = await page.evaluate(() => {
           const out = new Set<string>();
           document
             .querySelectorAll('div[data-testid="serp-ia-card"] h3 a')
@@ -244,7 +237,6 @@ export class YelpScraperService {
                 out.add(href.split('?')[0]);
               }
             });
-          // Fallback selector
           if (out.size === 0) {
             document.querySelectorAll('a[href*="/biz/"]').forEach((a) => {
               const href = (a as HTMLAnchorElement).href;

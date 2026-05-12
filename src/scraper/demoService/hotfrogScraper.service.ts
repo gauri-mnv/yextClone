@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium } from 'playwright';
-// import { Location } from '../location.entity';
-// import { InjectRepository } from '@nestjs/typeorm';
-// import { Repository } from 'typeorm';
 
 @Injectable()
 export class HotfrogScraperService {
@@ -14,7 +11,6 @@ export class HotfrogScraperService {
 
   async scrapeHotfrog(
     name: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     location: string,
   ): Promise<LocationResponseDto[]> {
     const browser = await chromium.launch({ headless: true });

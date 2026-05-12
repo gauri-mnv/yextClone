@@ -2,9 +2,6 @@
 import { Injectable } from '@nestjs/common';
 import { chromium } from 'playwright';
 import { LocationResponseDto } from '../dto/location-response.dto';
-// import { Location } from '../location.entity';
-// import { InjectRepository } from '@nestjs/typeorm';
-// import { Repository } from 'typeorm';
 
 @Injectable()
 export class InstagramScraperService {
@@ -128,8 +125,6 @@ export class InstagramScraperService {
           profileLink: window.location.href,
         };
       });
-
-      // console.log('[IG] Extracted:', data);
 
       //STEP 5: MAP RESPONSE
       const result: LocationResponseDto = {

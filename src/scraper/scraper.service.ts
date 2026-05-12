@@ -28,6 +28,9 @@ import { Repository } from 'typeorm';
 
 @Injectable()
 export class ScraperService {
+  /** Serializes DB sync so pg never overlaps queries on one client (pg@9 deprecation). */
+  private syncChain: Promise<unknown> = Promise.resolve();
+
   constructor(
     @InjectRepository(Location)
     private locationRepo: Repository<Location>,
@@ -58,55 +61,61 @@ export class ScraperService {
   ): Promise<any> {
     if (!scrapedData?.locationLink) return scrapedData;
 
-    try {
-      const existing: any = await this.locationRepo.findOne({
-        where: { locationLink: scrapedData.locationLink },
-      });
+    const run = async (): Promise<any> => {
+      try {
+        const existing: any = await this.locationRepo.findOne({
+          where: { locationLink: scrapedData.locationLink },
+        });
 
-      const newData = {
-        name: scrapedData.name || '',
-        address: scrapedData.address || '',
-        phone: scrapedData.phone || '',
-        source: scrapedData.source,
-        status: auditStatus,
-      };
-      if (existing) {
-        const hasChanged =
-          existing.name !== newData.name ||
-          existing.address !== newData.address ||
-          existing.phone !== newData.phone ||
-          existing.status !== newData.status;
+        const newData = {
+          name: scrapedData.name || '',
+          address: scrapedData.address || '',
+          phone: scrapedData.phone || '',
+          source: scrapedData.source,
+          status: auditStatus,
+        };
+        if (existing) {
+          const hasChanged =
+            existing.name !== newData.name ||
+            existing.address !== newData.address ||
+            existing.phone !== newData.phone ||
+            existing.status !== newData.status;
 
-        if (hasChanged) {
-          const updated = await this.locationRepo.save({
-            ...existing,
-            ...newData,
-          });
+          if (hasChanged) {
+            const updated = await this.locationRepo.save({
+              ...existing,
+              ...newData,
+            });
+            return {
+              ...updated,
+              timestamp: updated.foundAt.toISOString(),
+            };
+          }
           return {
-            ...updated,
-            timestamp: updated.foundAt.toISOString(),
+            ...existing,
+            timestamp: existing.foundAt.toISOString(),
+            status: existing.status,
+          };
+        } else {
+          const saved = await this.locationRepo.save(
+            this.locationRepo.create(newData),
+          );
+          return {
+            ...saved,
+            timestamp: saved.foundAt.toISOString(),
           };
         }
-        return {
-          ...existing,
-          timestamp: existing.foundAt.toISOString(),
-          status: existing.status,
-        };
-      } else {
-        const saved = await this.locationRepo.save(
-          this.locationRepo.create(newData),
+      } catch (error) {
+        console.error(
+          `[Sync Error] ${scrapedData.source} Failed to sync with database: ${error}`,
         );
-        return {
-          ...saved,
-          timestamp: saved.foundAt.toISOString(),
-        };
+        return scrapedData;
       }
-    } catch (error) {
-      console.error(
-        `[Sync Error] ${scrapedData.source} Failed to sync with database: ${error}`,
-      );
-      return scrapedData;
-    }
+    };
+
+    const next = this.syncChain.then(run);
+    this.syncChain = next.catch(() => undefined);
+    return next;
   }
   private async safeScrape(
     scraperPromise: Promise<any>,
@@ -133,7 +142,7 @@ export class ScraperService {
       }));
 
       // const syncedData = await Promise.all(
-      //   itemsWithSource.map((item: any) => this.syncWithDatabase(item, 'Pending')),
+      // itemsWithSource.map((item: any) => this.syncWithDatabase(item, 'Pending')),
       // );
       return itemsWithSource;
     } catch (error: any) {
