@@ -89,20 +89,20 @@ export class MapQuestScraperService {
               document.querySelector('.address-container span') ||
               document.querySelector('.address');
 
-            const address = addressEl?.textContent || '-';
+            const address = addressEl?.textContent || '—';
             const phoneEl = document.querySelector(
               '[data-testid="bento-call"]',
             );
-            let phone = '-';
+            let phone = '—';
             if (phoneEl) {
               const href = phoneEl.getAttribute('href');
-              phone = href ? href.replace('tel:', '') : '-';
+              phone = href ? href.replace('tel:', '') : '—';
             }
             // // 3. Phone: Screenshot mein niche 'tel' link dikh raha hai
 
             return {
               name: name.trim(),
-              phone: phone ? phone.trim() : '-',
+              phone: phone ? phone.trim() : '—',
               address: address.trim().replace(/\s+/g, ' '),
               link: link,
             };

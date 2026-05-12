@@ -918,6 +918,15 @@
     tslib "2.8.1"
     uid "2.0.2"
 
+"@nestjs/config@^4.0.4":
+  version "4.0.4"
+  resolved "https://registry.npmjs.org/@nestjs/config/-/config-4.0.4.tgz"
+  integrity sha512-CJPjNitr0bAufSEnRe2N+JbnVmMmDoo6hvKCPzXgZoGwJSmp/dZPk9f/RMbuD/+Q1ZJPjwsRpq0vxna++Knwow==
+  dependencies:
+    dotenv "17.4.1"
+    dotenv-expand "12.0.3"
+    lodash "4.18.1"
+
 "@nestjs/core@^10.0.0 || ^11.0.0", "@nestjs/core@^11.0.0", "@nestjs/core@^11.0.1":
   version "11.1.19"
   resolved "https://registry.npmjs.org/@nestjs/core/-/core-11.1.19.tgz"
@@ -1455,15 +1464,10 @@
   resolved "https://registry.npmjs.org/@ungap/structured-clone/-/structured-clone-1.3.0.tgz"
   integrity sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==
 
-"@unrs/resolver-binding-linux-x64-gnu@1.11.1":
+"@unrs/resolver-binding-win32-x64-msvc@1.11.1":
   version "1.11.1"
-  resolved "https://registry.npmjs.org/@unrs/resolver-binding-linux-x64-gnu/-/resolver-binding-linux-x64-gnu-1.11.1.tgz"
-  integrity sha512-C3ZAHugKgovV5YvAMsxhq0gtXuwESUKc5MhEtjBpLoHPLYM+iuwSj3lflFwK3DPm68660rZ7G8BMcwSro7hD5w==
-
-"@unrs/resolver-binding-linux-x64-musl@1.11.1":
-  version "1.11.1"
-  resolved "https://registry.npmjs.org/@unrs/resolver-binding-linux-x64-musl/-/resolver-binding-linux-x64-musl-1.11.1.tgz"
-  integrity sha512-rV0YSoyhK2nZ4vEswT/QwqzqQXw5I6CjoaYMOX0TqBlWhojUf8P94mvI7nuJTeaCkkds3QE4+zS8Ko+GdXuZtA==
+  resolved "https://registry.npmjs.org/@unrs/resolver-binding-win32-x64-msvc/-/resolver-binding-win32-x64-msvc-1.11.1.tgz"
+  integrity sha512-lrW200hZdbfRtztbygyaq/6jP6AKE8qQN2KvPcJ+x7wiD038YtnYtZ82IMNJ69GJibV7bwL3y9FgK+5w/pYt6g==
 
 "@webassemblyjs/ast@^1.14.1", "@webassemblyjs/ast@1.14.1":
   version "1.14.1"
@@ -1595,6 +1599,13 @@
   version "4.2.2"
   resolved "https://registry.npmjs.org/@xtuc/long/-/long-4.2.2.tgz"
   integrity sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==
+
+"2captcha-ts@^2.4.1":
+  version "2.4.1"
+  resolved "https://registry.npmjs.org/2captcha-ts/-/2captcha-ts-2.4.1.tgz"
+  integrity sha512-xYQhm0ft3YlnRVghdPrGRQaXPodcQ5lIs3Yaob7SH0RUAolPx1fAm5cS/Bzel8YEHVqQnV+Xjrua/1ql51xGpg==
+  dependencies:
+    node-fetch "^2.6.1"
 
 "2captcha@^3.0.5-2":
   version "3.0.5-2"
@@ -2500,10 +2511,22 @@ diff@^4.0.1:
   resolved "https://registry.npmjs.org/diff/-/diff-4.0.4.tgz"
   integrity sha512-X07nttJQkwkfKfvTPG/KSnE2OMdcUCao6+eXF3wmnIQRn2aPAHH3VxDbDOdegkd6JbPsXqShpvEOHfAT+nCNwQ==
 
-dotenv@^16.6.1:
+dotenv-expand@12.0.3:
+  version "12.0.3"
+  resolved "https://registry.npmjs.org/dotenv-expand/-/dotenv-expand-12.0.3.tgz"
+  integrity sha512-uc47g4b+4k/M/SeaW1y4OApx+mtLWl92l5LMPP0GNXctZqELk+YGgOPIIC5elYmUH4OuoK3JLhuRUYegeySiFA==
+  dependencies:
+    dotenv "^16.4.5"
+
+dotenv@^16.4.5, dotenv@^16.6.1:
   version "16.6.1"
   resolved "https://registry.npmjs.org/dotenv/-/dotenv-16.6.1.tgz"
   integrity sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==
+
+dotenv@17.4.1:
+  version "17.4.1"
+  resolved "https://registry.npmjs.org/dotenv/-/dotenv-17.4.1.tgz"
+  integrity sha512-k8DaKGP6r1G30Lx8V4+pCsLzKr8vLmV2paqEj1Y55GdAgJuIqpRp5FfajGF8KtwMxCz9qJc6wUIJnm053d/WCw==
 
 dunder-proto@^1.0.1:
   version "1.0.1"
@@ -4113,7 +4136,7 @@ lodash.merge@^4.6.2:
   resolved "https://registry.npmjs.org/lodash.merge/-/lodash.merge-4.6.2.tgz"
   integrity sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==
 
-lodash@^4.17.21:
+lodash@^4.17.21, lodash@4.18.1:
   version "4.18.1"
   resolved "https://registry.npmjs.org/lodash/-/lodash-4.18.1.tgz"
   integrity sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==
@@ -4351,11 +4374,6 @@ mute-stream@^2.0.0:
   version "2.0.0"
   resolved "https://registry.npmjs.org/mute-stream/-/mute-stream-2.0.0.tgz"
   integrity sha512-WWdIxpyjEn+FhQJQQv9aQAYlHoNVdzIzUySNV1gHUPDSdZJ3yZn7pAAbQcV7B56Mvu881q9FZV+0Vx2xC44VWA==
-
-nan@^2.13.2:
-  version "2.26.2"
-  resolved "https://registry.npmjs.org/nan/-/nan-2.26.2.tgz"
-  integrity sha512-0tTvBTYkt3tdGw22nrAy50x7gpbGCCFH3AFcyS5WiUu7Eu4vWlri1woE6qHBSfy11vksDqkiwjOnlR7WV8G1Hw==
 
 napi-postinstall@^0.3.0:
   version "0.3.4"
@@ -5238,13 +5256,6 @@ slash@^3.0.0:
   version "3.0.0"
   resolved "https://registry.npmjs.org/slash/-/slash-3.0.0.tgz"
   integrity sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==
-
-sleep@6.1.0:
-  version "6.1.0"
-  resolved "https://registry.npmjs.org/sleep/-/sleep-6.1.0.tgz"
-  integrity sha512-Z1x4JjJxsru75Tqn8F4tnOFeEu3HjtITTsumYUiuz54sGKdISgLCek9AUlXlVVrkhltRFhNUsJDJE76SFHTDIQ==
-  dependencies:
-    nan "^2.13.2"
 
 smart-buffer@^4.2.0:
   version "4.2.0"

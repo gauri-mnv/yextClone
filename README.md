@@ -1,3 +1,45 @@
+
+
+```
+Airdrie Choice Dental
+2100 Market St, Airdrie, AB T4A 0R8 
+5877759911
+
+---
+
+
+Swanavon Dental Clinic
+10104 97 Ave, Grande Prairie, AB T8V 7X6 
+7808311150
+
+---
+
+Darji Clinic 20000
+767 Peachtree Pkwy Unit 4, Cumming, GA 30041, USA
+(678) 208-3460
+
+---
+
+Wright Smiles Pediatric Dentistry
+50 Remick Blvd, Springboro, OH
+(937) 885-2222
+
+---
+
+12th & 8th Dental
+1221 8 St SW #121, Calgary, Alberta T2R0L4
+(587) 843-4946 | +14034751288
+
+---
+
+404 Dental
+1091 Gorham St. Suite 108, Newmarket, Ontario L3Y8X7
+(365) 363-0478
+
+
+```
+
+
 <!-- <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>

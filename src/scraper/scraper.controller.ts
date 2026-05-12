@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import {
   Body,
   Controller,
@@ -19,6 +18,7 @@ export class ScraperController {
       scrapeDto.name,
       scrapeDto.location,
       scrapeDto.phone,
+      scrapeDto.locationLink,
     );
   }
 }
