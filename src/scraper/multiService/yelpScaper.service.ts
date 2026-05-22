@@ -1,68 +1,171 @@
-/* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Injectable, Logger } from '@nestjs/common';
 import { LocationResponseDto } from '../dto/location-response.dto';
 import { chromium as chromiumExtra } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import type { Browser, BrowserContext, Page } from 'playwright';
 
+/**
+ * Register the Stealth plugin once at module load time so that all
+ * Chromium instances launched by this service bypass basic bot detection.
+ */
 chromiumExtra.use(StealthPlugin());
 
+/** Maximum number of business detail page links to visit per search */
+const MAX_DETAIL_LINKS = 5;
+
+/** Maximum number of full scrape attempts before giving up */
+const MAX_ATTEMPTS = 3;
+
+/** Pool of realistic user-agent strings rotated per session */
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0',
+];
+
+/**
+ * Service responsible for scraping business location data from Yelp
+ * using a stealth headless Chromium browser with CAPTCHA detection,
+ * human-like interaction simulation, and exponential backoff retries.
+ */
 @Injectable()
 export class YelpScraperService {
   private readonly logger = new Logger(YelpScraperService.name);
 
-  // Realistic User Agents pool — har request pe rotate karenge
-  private readonly userAgents = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0',
-  ];
+  /**
+   * Scrapes Yelp for businesses matching the given name and location.
+   * Retries up to MAX_ATTEMPTS times with exponential backoff if blocked.
+   *
+   * @param businessName - Business name to search for (e.g. "Airdrie Choice Dental")
+   * @param location     - Location string passed to Yelp search (e.g. "Airdrie, AB")
+   * @returns A promise resolving to an array of matched LocationResponseDto objects
+   */
+  async scrapeYelp(
+    businessName: string,
+    location: string,
+  ): Promise<LocationResponseDto[]> {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const browser = await this.launchBrowser();
 
-  private pickUA(): string {
-    return this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
-  }
+      try {
+        const results = await this.performScraping(
+          browser,
+          businessName,
+          location,
+          attempt,
+        );
 
-  private sleep(ms: number) {
-    return new Promise((res) => setTimeout(res, ms));
-  }
+        // null signals a CAPTCHA block — retry with fresh fingerprint
+        if (results === null) {
+          this.logger.warn(
+            `[Yelp] CAPTCHA detected on attempt ${attempt}/${MAX_ATTEMPTS} — retrying`,
+          );
+          await this.delay(3000 * attempt + Math.random() * 2000);
+          continue;
+        }
 
-  private async humanScroll(page: Page) {
-    // Random human-like scroll, helps in passing bot heuristics
-    await page.evaluate(async () => {
-      const distance = 100 + Math.floor(Math.random() * 200);
-      const delay = 80 + Math.floor(Math.random() * 120);
-      for (let i = 0; i < 6; i++) {
-        window.scrollBy(0, distance);
-        await new Promise((r) => setTimeout(r, delay));
+        return results;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        // Custom short logger for clean output when anti-bot triggers or crashes context
+        if (
+          errorMessage.includes('closed') ||
+          errorMessage.includes('Target page') ||
+          errorMessage.includes('Timeout')
+        ) {
+          this.logger.error(
+            `[Yelp] Attempt ${attempt} failed: CAPTCHA block or anti-bot challenge encountered.`,
+          );
+        } else {
+          this.logger.error(
+            `[Yelp] Attempt ${attempt} failed: ${errorMessage}`,
+          );
+        }
+
+        if (attempt < MAX_ATTEMPTS) {
+          await this.delay(2000 * attempt);
+        }
+      } finally {
+        // Always release the browser resource regardless of outcome
+        await browser.close().catch(() => null);
       }
-    });
-  }
-
-  private async isCaptchaPresent(page: Page): Promise<boolean> {
-    // Yelp ka captcha multiple forms mein aata hai - sab check karo
-    const html = (await page.content()).toLowerCase();
-    if (
-      html.includes('px-captcha') ||
-      html.includes('perimeterx') ||
-      html.includes('please verify') ||
-      html.includes('press & hold') ||
-      html.includes('recaptcha')
-    ) {
-      return true;
     }
-    // iframe based recaptcha
-    const recaptchaFrame = await page
-      .$('iframe[title*="reCAPTCHA"], iframe[src*="recaptcha"]')
-      .catch(() => null);
-    return !!recaptchaFrame;
+
+    return [];
   }
 
+  // ---------------------------------------------------------------------------
+  // Private Helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Orchestrates a single scrape attempt:
+   * navigate → human simulation → CAPTCHA check → collect links → visit detail pages.
+   *
+   * Returns null if a CAPTCHA is detected so the caller can retry.
+   *
+   * @param browser      - Active Playwright Browser instance
+   * @param businessName - Target business name
+   * @param location     - Location string for Yelp search
+   * @param attempt      - Current attempt number (used for logging)
+   * @returns Array of results, or null if blocked by CAPTCHA
+   */
+  private async performScraping(
+    browser: Browser,
+    businessName: string,
+    location: string,
+    attempt: number,
+  ): Promise<LocationResponseDto[] | null> {
+    const context = await this.newStealthContext(browser);
+    const page = await context.newPage();
+
+    const searchUrl =
+      `https://www.yelp.com/search` +
+      `?find_desc=${encodeURIComponent(businessName)}` +
+      `&find_loc=${encodeURIComponent(location)}`;
+
+    this.logger.log(`[Yelp] Attempt ${attempt} — navigating to: ${searchUrl}`);
+
+    await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: 50000 });
+
+    // Simulate human-like reading pause and scroll before interacting
+    await this.delay(1500 + Math.random() * 2500);
+    await this.humanScroll(page);
+    await this.delay(800 + Math.random() * 1200);
+
+    if (await this.isCaptchaPresent(page)) {
+      return null; // Signal caller to retry with fresh browser/fingerprint
+    }
+
+    // Wait for result cards — non-fatal if absent (handled below)
+    await page
+      .waitForSelector('div[data-testid="serp-ia-card"], h3 a[href*="/biz/"]', {
+        timeout: 15000,
+      })
+      .catch(() => null);
+
+    const businessLinks = await this.collectBusinessLinks(page);
+
+    if (businessLinks.length === 0) {
+      this.logger.warn(`[Yelp] No business links found on attempt ${attempt}`);
+      return [];
+    }
+
+    return this.visitDetailPages(page, businessLinks);
+  }
+
+  /**
+   * Launches a headless Chromium browser with flags that suppress
+   * common automation signals detected by anti-bot systems.
+   *
+   * @returns A configured Playwright Browser instance
+   */
   private async launchBrowser(): Promise<Browser> {
-    // Headless 'new' mode + flags jo automation flags hide karte hain
     return chromiumExtra.launch({
       headless: true,
       args: [
@@ -83,9 +186,17 @@ export class YelpScraperService {
     }) as Promise<Browser>;
   }
 
+  /**
+   * Creates a new browser context with stealth settings:
+   * randomized user-agent, realistic viewport, spoofed navigator properties,
+   * and resource blocking to reduce fingerprint surface area.
+   *
+   * @param browser - Active Playwright Browser instance
+   * @returns A fully configured stealth BrowserContext
+   */
   private async newStealthContext(browser: Browser): Promise<BrowserContext> {
     const context = await browser.newContext({
-      userAgent: this.pickUA(),
+      userAgent: USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)],
       viewport: { width: 1366, height: 800 },
       locale: 'en-US',
       timezoneId: 'America/New_York',
@@ -104,7 +215,7 @@ export class YelpScraperService {
       javaScriptEnabled: true,
     });
 
-    // Heavy assets block karo — speed + less fingerprinting surface
+    // Block heavy assets to improve speed and reduce fingerprinting surface
     await context.route('**/*', (route) => {
       const type = route.request().resourceType();
       if (['image', 'font', 'media', 'stylesheet'].includes(type)) {
@@ -113,7 +224,7 @@ export class YelpScraperService {
       return route.continue();
     });
 
-    // Extra anti-detection script har page pe inject
+    // Inject anti-detection overrides into every page before scripts run
     await context.addInitScript(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
       Object.defineProperty(navigator, 'languages', {
@@ -122,217 +233,201 @@ export class YelpScraperService {
       Object.defineProperty(navigator, 'plugins', {
         get: () => [1, 2, 3, 4, 5],
       });
-      // chrome runtime fake
-      // @ts-ignore
-      window.chrome = { runtime: {} };
-      // permissions fake
-      const originalQuery = window.navigator.permissions.query;
-      // @ts-ignore
+
+      // Fake Chrome runtime object expected by fingerprint detectors
+      (window as any).chrome = { runtime: {} };
+
+      // Spoof permissions API to return real-looking notification state
+      const originalQuery = window.navigator.permissions.query.bind(
+        navigator.permissions,
+      );
       window.navigator.permissions.query = (parameters: any) =>
         parameters.name === 'notifications'
-          ? Promise.resolve({ state: Notification.permission } as any)
+          ? Promise.resolve({
+              state: Notification.permission,
+            } as PermissionStatus)
           : originalQuery(parameters);
     });
 
     return context;
   }
-  private async checkAndLogStatus(page: Page, step: string) {
-    const url = page.url();
-    const title = await page.title();
-    const isCaptcha = await page
-      .isVisible(
-        'div#px-captcha, div.px-captcha-container, iframe[src*="perimeterx"]',
-      )
-      .catch(() => false);
 
-    this.logger.log(
-      `[Step: ${step}] URL: ${url} | Title: ${title} | CAPTCHA Visible: ${isCaptcha}`,
-    );
+  /**
+   * Extracts unique Yelp business detail page URLs from the search results page.
+   * Tries the primary card selector first, then falls back to any /biz/ link.
+   * Strips query parameters to get canonical business URLs.
+   *
+   * NOTE: This runs in Node.js context (not browser evaluate) to avoid
+   * the scoping issue where `this.logger` and `page` are inaccessible
+   * inside page.evaluate().
+   *
+   * @param page - Playwright Page showing Yelp search results
+   * @returns Deduplicated array of business detail URLs
+   */
+  private async collectBusinessLinks(page: Page): Promise<string[]> {
+    return page.evaluate((): string[] => {
+      const out = new Set<string>();
 
-    if (isCaptcha) {
-      this.logger.error(
-        `🚨 BLOCKED: PerimeterX Verification screen detected at ${step}.`,
-      );
-      const audioBtn = await page.$('button.alan-button'); // Common selector for PX audio
-      if (audioBtn) {
-        this.logger.log('Audio verification option found.');
-      } else {
-        return;
+      // Primary selector: structured result cards
+      document
+        .querySelectorAll('div[data-testid="serp-ia-card"] h3 a')
+        .forEach((anchor) => {
+          const href = (anchor as HTMLAnchorElement).href;
+          if (href.includes('/biz/') && !href.includes('adredir')) {
+            out.add(href.split('?')[0]);
+          }
+        });
+
+      // Fallback: any /biz/ link on the page
+      if (out.size === 0) {
+        document.querySelectorAll('a[href*="/biz/"]').forEach((anchor) => {
+          const href = (anchor as HTMLAnchorElement).href;
+          if (!href.includes('adredir')) out.add(href.split('?')[0]);
+        });
       }
-    }
+
+      return [...out];
+    });
   }
 
-  async scrapeYelp(
-    businessName: string,
-    location: string,
+  /**
+   * Visits each business detail page link, checks for CAPTCHAs,
+   * and extracts structured business information.
+   * Skips individual links on CAPTCHA or error without stopping the loop.
+   *
+   * @param page  - Playwright Page instance (reused across detail navigations)
+   * @param links - Business detail page URLs to visit
+   * @returns Array of successfully extracted LocationResponseDto objects
+   */
+  private async visitDetailPages(
+    page: Page,
+    links: string[],
   ): Promise<LocationResponseDto[]> {
-    const MAX_ATTEMPTS = 1;
+    const results: LocationResponseDto[] = [];
 
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      let browser: Browser | null = null;
+    for (const link of links.slice(0, MAX_DETAIL_LINKS)) {
       try {
-        this.logger.log(`Starting attempt ${attempt}...`);
-        browser = await this.launchBrowser();
-        const context = await this.newStealthContext(browser);
-        const page = await context.newPage();
-
-        const searchUrl = `https://www.yelp.com/search?find_desc=${encodeURIComponent(
-          businessName,
-        )}&find_loc=${encodeURIComponent(location)}`;
-        await page.goto(searchUrl, {
-          waitUntil: 'networkidle',
-          timeout: 50000,
+        await page.goto(link, {
+          waitUntil: 'domcontentloaded',
+          timeout: 25000,
         });
-        this.logger.log(`Navigating to: ${searchUrl}`);
-        // Random human delay
-        await this.sleep(1500 + Math.random() * 2500);
-        await this.humanScroll(page);
-        await this.sleep(800 + Math.random() * 1200);
+        await this.delay(800 + Math.random() * 1200);
 
-        await this.checkAndLogStatus(page, 'Initial Load');
-
-        // Check if we are stuck on the verification page
-
+        // Skip this listing if blocked — don't abort the entire loop
         if (await this.isCaptchaPresent(page)) {
-          this.logger.warn(
-            `CAPTCHA detected on attempt ${attempt}/${MAX_ATTEMPTS}. Retrying with fresh fingerprint...`,
-          );
-          await this.sleep(5000);
-          await browser.close();
-          browser = null;
-          // Exponential backoff
-          await this.sleep(3000 * attempt + Math.random() * 2000);
+          this.logger.warn(`[Yelp] CAPTCHA on detail page — skipping: ${link}`);
           continue;
         }
 
-        // Wait for results card
-        await page
-          .waitForSelector(
-            'div[data-testid="serp-ia-card"], h3 a[href*="/biz/"]',
-            {
-              timeout: 15000,
-            },
-          )
-          .catch(() => null);
-
-        const businessLinks: string[] = await page.evaluate(async () => {
-          this.logger.log(`Page Title: ${await page.title()}`);
-          try {
-            await page.waitForSelector('div[data-testid="serp-ia-card"]', {
-              timeout: 15000,
-            });
-          } catch (e) {
-            this.logger.error(
-              'Failed to find business cards. Saving screenshot for debug.',
-            );
-            await page.screenshot({ path: `error-attempt-${attempt}.png` });
-
-            // Log the first 500 characters of HTML to see if we are still blocked
-            const body = await page.evaluate(() =>
-              document.body.innerText.substring(0, 500),
-            );
-            this.logger.debug(`Page snippet: ${body}`);
-
-            throw e; // Rethrow to trigger attempt loop
-          }
-          const out = new Set<string>();
-          document
-            .querySelectorAll('div[data-testid="serp-ia-card"] h3 a')
-            .forEach((a) => {
-              const href = (a as HTMLAnchorElement).href;
-              if (href.includes('/biz/') && !href.includes('adredir')) {
-                out.add(href.split('?')[0]);
-              }
-            });
-          // Fallback selector
-          if (out.size === 0) {
-            document.querySelectorAll('a[href*="/biz/"]').forEach((a) => {
-              const href = (a as HTMLAnchorElement).href;
-              if (!href.includes('adredir')) out.add(href.split('?')[0]);
-            });
-          }
-          return [...out];
+        const details = await this.extractBusinessDetails(page);
+        results.push({
+          ...details,
+          source: 'Yelp',
+          locationLink: link,
+          timestamp: new Date().toISOString(),
         });
-
-        if (businessLinks.length === 0) {
-          this.logger.warn(`No results found on attempt ${attempt}`);
-          await browser.close();
-          browser = null;
-          if (attempt < MAX_ATTEMPTS) {
-            await this.sleep(2000 * attempt);
-            continue;
-          }
-          return [];
-        }
-
-        const finalResults: LocationResponseDto[] = [];
-
-        for (const link of businessLinks.slice(0, 5)) {
-          try {
-            await page.goto(link, {
-              waitUntil: 'domcontentloaded',
-              timeout: 25000,
-            });
-            await this.sleep(800 + Math.random() * 1200);
-
-            // Detail page pe captcha aaya to skip
-            if (await this.isCaptchaPresent(page)) {
-              this.logger.warn(`CAPTCHA on detail page, skipping: ${link}`);
-              continue;
-            }
-
-            const details = await page.evaluate(() => {
-              const name =
-                document.querySelector('h1')?.textContent?.trim() || '—';
-              const address =
-                document.querySelector('address')?.textContent?.trim() || '—';
-
-              const phoneRegex =
-                /\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/;
-              let phone = '—';
-              const candidates = Array.from(
-                document.querySelectorAll('p, span, div'),
-              );
-              for (const el of candidates) {
-                const text = (el as HTMLElement).innerText || '';
-                const match = text.match(phoneRegex);
-                if (match && text.length < 50) {
-                  phone = match[0];
-                  break;
-                }
-              }
-              return { name, address, phone };
-            });
-
-            finalResults.push({
-              ...details,
-              source: 'Yelp',
-              locationLink: link,
-              timestamp: new Date().toISOString(),
-              // foundAt: new Date().toISOString(),
-            });
-          } catch (e) {
-            this.logger.warn(`Failed to fetch details for ${link}: ${e}`);
-            // Don't break — keep collecting whatever you can
-            continue;
-          }
-        }
-
-        this.logger.log('Success! Page loaded without instant block.');
-
-        await browser.close();
-        return finalResults;
-      } catch (err) {
-        this.logger.error(`Attempt ${attempt} failed: ${err}`);
-        if (browser) {
-          await browser.close().catch(() => null);
-        }
-        if (attempt < MAX_ATTEMPTS) {
-          await this.sleep(2000 * attempt);
-          continue;
-        }
+      } catch (error) {
+        this.logger.warn(
+          `[Yelp] Failed to extract details for ${link}: ` +
+            `${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
-    return [];
+
+    return results;
+  }
+
+  /**
+   * Extracts structured business details from a Yelp business detail page.
+   * Phone is extracted via regex across candidate text elements since Yelp
+   * does not expose a reliable tel: href on detail pages.
+   *
+   * @param page - Playwright Page loaded with a Yelp business detail URL
+   * @returns Raw extracted business name, address, and phone
+   */
+  private async extractBusinessDetails(
+    page: Page,
+  ): Promise<Pick<LocationResponseDto, 'name' | 'address' | 'phone'>> {
+    return page.evaluate(() => {
+      const name =
+        document
+          .querySelector('h1, .company-name, [itemprop="name"]')
+          ?.textContent?.trim() ?? '—';
+
+      const address =
+        document.querySelector('address')?.textContent?.trim() ?? '—';
+
+      // Yelp does not reliably expose tel: links — scan text nodes with regex
+      const phoneRegex = /\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/;
+      let phone = '—';
+
+      for (const el of Array.from(document.querySelectorAll('p, span, div'))) {
+        const text = (el as HTMLElement).innerText ?? '';
+        const match = text.match(phoneRegex);
+        // Short text length ensures we pick the dedicated phone element, not an address block
+        if (match && text.length < 50) {
+          phone = match[0];
+          break;
+        }
+      }
+
+      return { name, address, phone };
+    });
+  }
+
+  /**
+   * Checks whether any known Yelp CAPTCHA or PerimeterX verification
+   * element is present on the current page.
+   * Checks both page HTML content and visible iframe elements.
+   *
+   * @param page - Active Playwright Page instance
+   * @returns True if a CAPTCHA or block screen is detected
+   */
+  private async isCaptchaPresent(page: Page): Promise<boolean> {
+    const html = (await page.content()).toLowerCase();
+
+    const hasTextSignal =
+      html.includes('px-captcha') ||
+      html.includes('perimeterx') ||
+      html.includes('please verify') ||
+      html.includes('press & hold') ||
+      html.includes('recaptcha');
+
+    if (hasTextSignal) return true;
+
+    // Also check for iframe-based reCAPTCHA widgets
+    const recaptchaFrame = await page
+      .$('iframe[title*="reCAPTCHA"], iframe[src*="recaptcha"]')
+      .catch(() => null);
+
+    return !!recaptchaFrame;
+  }
+
+  /**
+   * Simulates human-like scrolling by incrementally scrolling the page
+   * in small steps with random delays between each scroll movement.
+   * Helps pass bot detection heuristics that monitor scroll behavior.
+   *
+   * @param page - Active Playwright Page instance to scroll
+   */
+  private async humanScroll(page: Page): Promise<void> {
+    await page.evaluate(async () => {
+      const distance = 100 + Math.floor(Math.random() * 200);
+      const delayMs = 80 + Math.floor(Math.random() * 120);
+
+      for (let i = 0; i < 6; i++) {
+        window.scrollBy(0, distance);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    });
+  }
+
+  /**
+   * Returns a promise that resolves after a fixed number of milliseconds.
+   *
+   * @param ms - Duration to wait in milliseconds
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

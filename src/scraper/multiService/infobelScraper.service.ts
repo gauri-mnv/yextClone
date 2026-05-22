@@ -1,20 +1,44 @@
-import { Injectable } from '@nestjs/common';
-// import { InjectRepository } from '@nestjs/typeorm';
-// import { Repository } from 'typeorm';
-// import { Location } from '../location.entity';
-import { LocationResponseDto } from '../dto/location-response.dto';
+import { Injectable, Logger } from '@nestjs/common';
 import { chromium } from 'playwright-extra';
+import type { Browser, Page } from 'playwright-core';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { LocationResponseDto } from '../dto/location-response.dto';
 
+/**
+ * Register the Stealth plugin once at module load time so that all
+ * Chromium instances launched by this service bypass basic bot detection.
+ */
 chromium.use(StealthPlugin());
 
+/** Maximum number of search attempts before giving up on bot-detection retries */
+const MAX_SEARCH_RETRIES = 3;
+
+/** Delay in milliseconds to wait after hitting the abuse/block page before retrying */
+const ABUSE_RETRY_DELAY_MS = 5000;
+
+/** Pool of user-agent strings rotated randomly to reduce bot fingerprinting */
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+];
+
+/**
+ * Service responsible for scraping business location data from Infobel Pro
+ * using a stealth headless Chromium browser with retry logic to handle
+ * bot-detection and abuse page redirects.
+ */
 @Injectable()
 export class InfobelScraperService {
-  constructor() {
-    // @InjectRepository(Location)
-    // private locationRepo: Repository<Location>,
-  }
+  private readonly logger = new Logger(InfobelScraperService.name);
 
+  /**
+   * Scrapes Infobel Pro for a business matching the given name and location.
+   *
+   * @param targetName - Business name to search for (e.g. "Airdrie Choice Dental")
+   * @param location   - Comma-separated location string (e.g. "123 Main St, Airdrie, AB")
+   * @returns A promise resolving to a single matched LocationResponseDto, or empty array
+   */
   async scrapeInfobel(
     targetName: string,
     location: string,
@@ -29,165 +53,288 @@ export class InfobelScraperService {
         '--ignore-certificate-errors',
       ],
     });
-    const userAgents = [
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    ];
-    const context = await browser.newContext({
-      userAgent: userAgents[Math.floor(Math.random() * userAgents.length)],
-    });
-    const page = await context.newPage();
 
     try {
-      const parts = location.split(',').map((p) => p.trim());
-      const city = parts.length >= 2 ? parts[1] : parts[0];
-      let attempts = 0;
-      const maxRetries = 3;
-      let searchSuccessful = false;
-
-      while (attempts < maxRetries && !searchSuccessful) {
-        console.log(
-          `🔍 [Infobel] Attempt ${attempts + 1}: Searching for ${targetName} in ${city}`,
-        );
-
-        await page.goto('https://search.infobelpro.com/', {
-          waitUntil: 'networkidle',
-        });
-        await new Promise((r) => setTimeout(r, Math.random() * 2000 + 1000));
-        await page.waitForSelector('#inputName', {
-          timeout: 30000,
-        });
-        await page.click('#inputName');
-        await page.type('#inputName', targetName, { delay: 150 });
-
-        await page.mouse.move(Math.random() * 400, Math.random() * 400);
-
-        // await page.click('#searchBtn');
-        await page.waitForFunction(
-          () => {
-            const btn = document.querySelector(
-              '#searchBtn',
-            ) as HTMLButtonElement;
-            return btn && !btn.disabled;
-          },
-          { timeout: 15000 },
-        );
-
-        await page.click('#searchBtn', { force: true });
-
-        await page.waitForNavigation({ waitUntil: 'networkidle' }).catch(() => {
-          console.log('Navigation timeout - checking current state...');
-        });
-
-        if (page.url().includes('/Abuse')) {
-          // console.warn('⚠️ [Infobel] Detected! Abuse page hit. Retrying...');
-          await context.clearCookies();
-
-          // Optional: Wait a bit before retrying to look more human
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          attempts++;
-          continue;
-        }
-
-        searchSuccessful = true;
-      }
-
-      if (!searchSuccessful) {
-        // console.error(
-        //   '❌ [Infobel] Failed after max retries due to bot detection.',
-        // );
-        return [];
-      }
-
-      await page
-        .waitForSelector('.orderanalysis-table__row', { timeout: 15000 })
-        .catch(() => {
-          console.log('No results found or page failed to load.');
-        });
-
-      // 3. List me se EXACT Business Name find karein
-      // page.on('console', (msg) => {
-      //   // Aap isme prefix bhi laga sakte ho taaki pehchan sako ki ye browser ka log hai
-      //   console.log(`🌐 [BROWSER]: ${msg.text()}`);
-      // });
-      const businessUrl = await page.evaluate((name) => {
-        const items = Array.from(
-          document.querySelectorAll('.orderanalysis-table__row'),
-        );
-        const target = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        // Name check logic
-        const match = items.find((item) => {
-          const foundName =
-            item.querySelector('td a')?.textContent?.trim() || '';
-          const cleanFoundName = foundName
-            .toLowerCase()
-            .replace(/^\d+\.\s*/, '') // Shuruat ka "6. " hatao
-            .replace(/[^a-z0-9]/g, ''); // Sab alphanumeric clean karo
-
-          return (
-            cleanFoundName.includes(target) || target.includes(cleanFoundName)
-          );
-        });
-        if (match) {
-          // Extract the href from the link
-          const link = match.querySelector('td a') as HTMLAnchorElement;
-          return link ? link.href : null;
-        }
-
-        return null;
-      }, targetName);
-
-      if (!businessUrl) {
-        return [];
-      }
-
-      // 4. More Info (Detail Page) par jayein
-      await page.goto(businessUrl, { waitUntil: 'networkidle' });
-      const finalData = await page.evaluate((sourceUrl) => {
-        const name = document.querySelector('h1')?.textContent?.trim() || '—';
-
-        // 2. Address: Look for a container that likely has 'address' in its class or ID
-        // Or look for text that contains common address patterns (numbers + street)
-        const address =
-          document
-            .querySelector(
-              '.address-text, .location-info, [itemprop="address"]',
-            )
-            ?.textContent?.trim() || '—';
-
-        // 3. Phone: Look specifically for the tel link
-        const phoneLink = document.querySelector('a[href^="tel:"]');
-        const phone = phoneLink
-          ? phoneLink.textContent?.replace('Tel.', '').trim()
-          : '—';
-
-        // 4. Website: Find the external link
-        const website =
-          (
-            document.querySelector(
-              'a[href^="http"]:not([href*="infobel"])',
-            ) as HTMLAnchorElement
-          )?.href || '—';
-
-        return {
-          name,
-          address,
-          phone,
-          website,
-          locationLink: sourceUrl,
-          source: 'Infobel',
-          timestamp: new Date().toISOString(),
-        };
-      }, businessUrl);
-
-      return [finalData];
-    } catch (e) {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      console.error(`❌ [Infobel] Error: ${e}`);
+      return await this.performScraping(browser, targetName, location);
+    } catch (error) {
+      this.logger.error(
+        `[Infobel] Scraper error: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return [];
     } finally {
+      // Always release the browser resource regardless of outcome
       await browser.close();
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private Helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Orchestrates the full scraping flow:
+   * setup context → search with retries → find business URL → extract detail page.
+   *
+   * @param browser    - Active Playwright Browser instance
+   * @param targetName - Business name to search and match
+   * @param location   - Raw location string used to extract the city
+   * @returns Matched location result wrapped in an array, or empty array
+   */
+  private async performScraping(
+    browser: Browser,
+    targetName: string,
+    location: string,
+  ): Promise<LocationResponseDto[]> {
+    // Rotate user-agent randomly to reduce bot fingerprinting
+    const randomUserAgent =
+      USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+
+    const context = await browser.newContext({ userAgent: randomUserAgent });
+    const page = await context.newPage();
+
+    const city = this.extractCity(location);
+
+    // Step 1: Attempt search with retry logic for bot-detection handling
+    const searchSuccessful = await this.attemptSearchWithRetries(
+      page,
+      context,
+      targetName,
+      city,
+    );
+
+    if (!searchSuccessful) {
+      this.logger.error(
+        `[Infobel] All ${MAX_SEARCH_RETRIES} attempts failed — bot detection not bypassed`,
+      );
+      return [];
+    }
+
+    // Step 2: Wait for results table and find the matching business URL
+    await this.waitForResultsTable(page);
+
+    const businessUrl = await this.findMatchingBusinessUrl(page, targetName);
+
+    if (!businessUrl) {
+      this.logger.log(
+        `[Infobel] No matching listing found for "${targetName}"`,
+      );
+      return [];
+    }
+
+    // Step 3: Navigate to the detail page and extract business information
+    await page.goto(businessUrl, { waitUntil: 'networkidle' });
+    const extracted = await this.extractBusinessDetails(page, businessUrl);
+
+    this.logger.log(`[Infobel] Match found: "${extracted.name}"`);
+    return [extracted];
+  }
+
+  /**
+   * Attempts the Infobel search up to MAX_SEARCH_RETRIES times.
+   * On each attempt it fills the search form and submits it.
+   * If an abuse/block page is detected, cookies are cleared and
+   * a delay is introduced before the next attempt to mimic human behavior.
+   *
+   * @param page       - Active Playwright Page instance
+   * @param context    - Browser context (used to clear cookies on abuse detection)
+   * @param targetName - Business name to type into the search input
+   * @param city       - Resolved city name for logging purposes
+   * @returns True if search completed successfully, false if all retries exhausted
+   */
+  private async attemptSearchWithRetries(
+    page: Page,
+    context: Awaited<ReturnType<Browser['newContext']>>,
+    targetName: string,
+    city: string,
+  ): Promise<boolean> {
+    for (let attempt = 1; attempt <= MAX_SEARCH_RETRIES; attempt++) {
+      this.logger.log(
+        `[Infobel] Attempt ${attempt}/${MAX_SEARCH_RETRIES}: Searching for "${targetName}" in "${city}"`,
+      );
+
+      await page.goto('https://search.infobelpro.com/', {
+        waitUntil: 'networkidle',
+      });
+
+      // Random human-like delay before interacting with the page
+      await this.randomDelay(1000, 2000);
+
+      await page.waitForSelector('#inputName', { timeout: 30000 });
+      await page.click('#inputName');
+
+      // Type with keystroke delay to mimic human input speed
+      await page.type('#inputName', targetName, { delay: 150 });
+
+      // Simulate random mouse movement to avoid static interaction patterns
+      await page.mouse.move(Math.random() * 400, Math.random() * 400);
+
+      // Wait until the search button is enabled before clicking
+      await page.waitForFunction(
+        () => {
+          const btn = document.querySelector('#searchBtn') as HTMLButtonElement;
+          return btn && !btn.disabled;
+        },
+        { timeout: 15000 },
+      );
+
+      await page.click('#searchBtn', { force: true });
+
+      // Wait for navigation after form submission; timeout is non-fatal
+      await page
+        .waitForNavigation({ waitUntil: 'networkidle' })
+        .catch(() =>
+          this.logger.warn(
+            '[Infobel] Navigation timeout after search — checking current state',
+          ),
+        );
+
+      // Abort attempt if Infobel has flagged this session as a bot
+      if (page.url().includes('/Abuse')) {
+        this.logger.warn(
+          `[Infobel] Abuse page detected on attempt ${attempt} — clearing cookies and retrying`,
+        );
+        await context.clearCookies();
+        await this.delay(ABUSE_RETRY_DELAY_MS);
+        continue;
+      }
+
+      return true; // Search completed successfully
+    }
+
+    return false; // All retries exhausted
+  }
+
+  /**
+   * Waits for the Infobel search results table to appear in the DOM.
+   * Logs a warning if results are slow or absent — does not throw,
+   * allowing the scraper to attempt URL extraction anyway.
+   *
+   * @param page - Playwright Page showing Infobel search results
+   */
+  private async waitForResultsTable(page: Page): Promise<void> {
+    try {
+      await page.waitForSelector('.orderanalysis-table__row', {
+        timeout: 15000,
+      });
+    } catch {
+      this.logger.warn(
+        '[Infobel] Results table not found or took too long to load — proceeding anyway',
+      );
+    }
+  }
+
+  /**
+   * Scans the Infobel results table for a row whose business name
+   * closely matches the target name and returns its detail page URL.
+   *
+   * Matching strips leading numbering (e.g. "6. ") and all non-alphanumeric
+   * characters for case-insensitive fuzzy comparison.
+   *
+   * @param page       - Playwright Page showing Infobel search results
+   * @param targetName - Business name to match against table rows
+   * @returns Detail page URL of the matched business, or null if not found
+   */
+  private async findMatchingBusinessUrl(
+    page: Page,
+    targetName: string,
+  ): Promise<string | null> {
+    return page.evaluate((name: string): string | null => {
+      const targetClean = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      const matchedRow = Array.from(
+        document.querySelectorAll('.orderanalysis-table__row'),
+      ).find((row) => {
+        const rawName = row.querySelector('td a')?.textContent?.trim() ?? '';
+
+        const cleanName = rawName
+          .toLowerCase()
+          .replace(/^\d+\.\s*/, '') // Strip leading numbering e.g. "6. "
+          .replace(/[^a-z0-9]/g, ''); // Keep only alphanumeric characters
+
+        return (
+          cleanName.includes(targetClean) || targetClean.includes(cleanName)
+        );
+      });
+
+      const link = matchedRow?.querySelector<HTMLAnchorElement>('td a');
+      return link?.href ?? null;
+    }, targetName);
+  }
+
+  /**
+   * Extracts structured business details from an Infobel business detail page.
+   *
+   * @param page      - Playwright Page loaded with the business detail URL
+   * @param sourceUrl - The URL of the detail page, used as locationLink
+   * @returns Fully formed LocationResponseDto with source and timestamp
+   */
+  private async extractBusinessDetails(
+    page: Page,
+    sourceUrl: string,
+  ): Promise<LocationResponseDto> {
+    return page.evaluate((link: string): LocationResponseDto => {
+      const name = document.querySelector('h1')?.textContent?.trim() ?? '—';
+
+      const address =
+        document
+          .querySelector('.address-text, .location-info, [itemprop="address"]')
+          ?.textContent?.trim() ?? '—';
+
+      // Strip "Tel." label that Infobel prepends to the phone number display
+      const phone =
+        document
+          .querySelector('a[href^="tel:"]')
+          ?.textContent?.replace('Tel.', '')
+          .trim() ?? '—';
+
+      // External website: first outbound link that is not an Infobel internal link
+      // const website =
+      //   document.querySelector<HTMLAnchorElement>(
+      //     'a[href^="http"]:not([href*="infobel"])',
+      //   )?.href ?? '—';
+
+      return {
+        name,
+        address,
+        phone,
+        locationLink: link,
+        source: 'Infobel',
+        timestamp: new Date().toISOString(),
+      };
+    }, sourceUrl);
+  }
+
+  /**
+   * Extracts the city segment from a comma-separated location string.
+   * Takes the second part if available, otherwise falls back to the first.
+   *
+   * @param location - Raw location string (e.g. "123 Main St, Airdrie, AB")
+   * @returns Trimmed city name string
+   */
+  private extractCity(location: string): string {
+    const parts = location.split(',').map((part) => part.trim());
+    return parts.length >= 2 ? parts[1] : parts[0];
+  }
+
+  /**
+   * Returns a promise that resolves after a fixed number of milliseconds.
+   * Used for deliberate pauses (e.g. after abuse page detection).
+   *
+   * @param ms - Duration to wait in milliseconds
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Returns a promise that resolves after a random delay within a given range.
+   * Used to simulate human-like timing between page interactions.
+   *
+   * @param minMs - Minimum delay in milliseconds
+   * @param maxMs - Maximum delay in milliseconds
+   */
+  private randomDelay(minMs: number, maxMs: number): Promise<void> {
+    const duration = Math.random() * (maxMs - minMs) + minMs;
+    return new Promise((resolve) => setTimeout(resolve, duration));
   }
 }

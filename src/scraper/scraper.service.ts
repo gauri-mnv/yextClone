@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
 import { Injectable } from '@nestjs/common';
-// import { LocationResponseDto } from './dto/location-response.dto';
 import {
   GoogleMapsScraperService,
   YelpScraperService,
@@ -32,7 +31,6 @@ export class ScraperService {
     private locationRepo: Repository<Location>,
     private googleMapsScraperService: GoogleMapsScraperService,
     private yelpScraperService: YelpScraperService,
-    // private bingScraperService: BingScraperService,
     private n49Service: N49ScraperService,
     private mapquestService: MapQuestScraperService,
     private opendiService: OpendiScraperService,
@@ -44,8 +42,6 @@ export class ScraperService {
     private readonly iGlobalScraperService: IGlobalScraperService,
     private goLocalScraperService: GoLocalScraperService,
     private merchantCircleScraperService: MerchantCircleScraperService,
-    // private cylexScraperService: CylexScraperService,
-    // private brownbookScraperService: BrownbookScraperService,
     private infobelScraperService: InfobelScraperService,
   ) {}
 
@@ -105,6 +101,7 @@ export class ScraperService {
       return scrapedData;
     }
   }
+
   private async safeScrape(
     scraperPromise: Promise<any>,
     sourceName: string,
@@ -123,15 +120,10 @@ export class ScraperService {
         return [defaultObj];
       }
       const data = Array.isArray(result) ? result : [result];
-      const itemsWithSource = data.map((item: any) => ({
+      return data.map((item: any) => ({
         ...item,
         source: sourceName,
       }));
-
-      // const syncedData = await Promise.all(
-      //   itemsWithSource.map((item: any) => this.syncWithDatabase(item, 'Pending')),
-      // );
-      return itemsWithSource;
     } catch (error: any) {
       const errMsg = error?.message || 'Unknown error';
       console.error(
@@ -141,6 +133,136 @@ export class ScraperService {
     }
   }
 
+  // async scrapeAllPlatforms(
+  //   name: string,
+  //   location: string,
+  //   phone: string,
+  //   locationLink: string,
+  //   onResultReady?: (data: any) => void,
+  // ): Promise<any[]> {
+  //   // Lazy factory array — wraps logic in executable scopes to protect process orchestration
+  //   const taskFactories = [
+  //     {
+  //       run: () =>
+  //         this.googleMapsScraperService.scrapeGoogleMaps(
+  //           `${name} ${location} `,
+  //         ),
+  //       source: 'Google Maps',
+  //     },
+  //     {
+  //       run: () =>
+  //         this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
+  //       source: 'Yelp',
+  //     },
+  //     {
+  //       run: () => this.n49Service.scrapeN49(name, location),
+  //       source: 'N49',
+  //     },
+  //     {
+  //       run: () => this.mapquestService.scrapeMapQuest(`${name} ${location}`),
+  //       source: 'MapQuest',
+  //     },
+  //     {
+  //       run: () => this.opendiService.scrapeOpendi(name, location),
+  //       source: 'Opendi',
+  //     },
+  //     {
+  //       run: () =>
+  //         this.profileCanadaService.scrapeProfileCanada(name, location),
+  //       source: 'Profile Canada',
+  //     },
+  //     {
+  //       run: () => this.instagramService.scrapeInstagram(name),
+  //       source: 'Instagram',
+  //     },
+  //     {
+  //       run: () => this.wheretoScraperService.scrapeWhereTo(name, location),
+  //       source: 'WhereTo',
+  //     },
+  //     {
+  //       run: () => this.hotfrogScraperService.scrapeHotfrog(name, location),
+  //       source: 'Hotfrog',
+  //     },
+  //     {
+  //       run: () => this.facebookScraperService.scrapeFacebook(name),
+  //       source: 'Facebook',
+  //     },
+  //     {
+  //       run: () => this.iGlobalScraperService.scrapeIGlobal(name),
+  //       source: 'IGlobal',
+  //     },
+  //     {
+  //       run: () => this.goLocalScraperService.scrapeGoLocal(name, location),
+  //       source: 'GoLocal247',
+  //     },
+  //     {
+  //       run: () =>
+  //         this.merchantCircleScraperService.scrapeMerchantCircle(
+  //           name,
+  //           location,
+  //         ),
+  //       source: 'MerchantCircle',
+  //     },
+  //     {
+  //       run: () => this.infobelScraperService.scrapeInfobel(name, location),
+  //       source: 'Infobel',
+  //     },
+  //   ];
+
+  //   const processTask = async (task: {
+  //     run: () => Promise<any>;
+  //     source: string;
+  //   }) => {
+  //     // Execute factory right here so initialization happens safely within its own runtime block
+  //     const resultsArray = await this.safeScrape(task.run(), task.source);
+  //     const item = resultsArray[0];
+
+  //     const isEmpty = !item.name && !item.address && !item.phone;
+  //     const auditResult = this.checkNAPMatch(item, name, phone, location);
+  //     const syncedData = await this.syncWithDatabase(item, auditResult.status);
+
+  //     let finalResult;
+
+  //     if (isEmpty) {
+  //       finalResult = {
+  //         scraped: { name: '', phone: '', address: '' },
+  //         meta: {
+  //           source: item.source,
+  //           locationLink: item.locationLink || '',
+  //           timestamp: new Date().toISOString(),
+  //         },
+  //         audit: {
+  //           status: 'Mismatch',
+  //           results: { name: '', phone: '', address: '' },
+  //           matched: { name: false, phone: false, address: false },
+  //           score: 0,
+  //         },
+  //       };
+  //     } else {
+  //       finalResult = {
+  //         scraped:
+  //           auditResult.status === 'Verified'
+  //             ? { name: item.name, phone: item.phone, address: item.address }
+  //             : {},
+  //         meta: {
+  //           source: item.source,
+  //           locationLink: item.locationLink || '',
+  //           timestamp: syncedData.foundAt || new Date().toISOString(),
+  //         },
+  //         audit: auditResult,
+  //       };
+  //     }
+
+  //     if (onResultReady) {
+  //       onResultReady(finalResult);
+  //     }
+  //     return finalResult;
+  //   };
+
+  //   // Resolves smoothly without engine memory leaks or inter-process target contamination
+  //   return Promise.all(taskFactories.map((task) => processTask(task)));
+  // }
+
   async scrapeAllPlatforms(
     name: string,
     location: string,
@@ -148,143 +270,138 @@ export class ScraperService {
     locationLink: string,
     onResultReady?: (data: any) => void,
   ): Promise<any[]> {
-    // await this.locationRepo.clear();
-
-    const tasks = [
+    // 1. Define our factory array (wrapped execution scopes)
+    const taskFactories = [
       {
-        promise: this.googleMapsScraperService.scrapeGoogleMaps(
-          `${name} ${location} `,
-        ),
+        run: () =>
+          this.googleMapsScraperService.scrapeGoogleMaps(
+            `${name} ${location} `,
+          ),
         source: 'Google Maps',
       },
       {
-        promise: this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
+        run: () =>
+          this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
         source: 'Yelp',
       },
-      { promise: this.n49Service.scrapeN49(name, location), source: 'N49' },
+      { run: () => this.n49Service.scrapeN49(name, location), source: 'N49' },
       {
-        promise: this.mapquestService.scrapeMapQuest(`${name} ${location}`),
+        run: () => this.mapquestService.scrapeMapQuest(`${name} ${location}`),
         source: 'MapQuest',
       },
       {
-        promise: this.opendiService.scrapeOpendi(name, location),
+        run: () => this.opendiService.scrapeOpendi(name, location),
         source: 'Opendi',
       },
       {
-        promise: this.profileCanadaService.scrapeProfileCanada(name, location),
+        run: () =>
+          this.profileCanadaService.scrapeProfileCanada(name, location),
         source: 'Profile Canada',
       },
       {
-        promise: this.instagramService.scrapeInstagram(name),
+        run: () => this.instagramService.scrapeInstagram(name),
         source: 'Instagram',
       },
       {
-        promise: this.wheretoScraperService.scrapeWhereTo(name, location),
+        run: () => this.wheretoScraperService.scrapeWhereTo(name, location),
         source: 'WhereTo',
       },
       {
-        promise: this.hotfrogScraperService.scrapeHotfrog(name, location),
+        run: () => this.hotfrogScraperService.scrapeHotfrog(name, location),
         source: 'Hotfrog',
       },
       {
-        promise: this.facebookScraperService.scrapeFacebook(name),
+        run: () => this.facebookScraperService.scrapeFacebook(name),
         source: 'Facebook',
       },
       {
-        promise: this.iGlobalScraperService.scrapeIGlobal(name),
+        run: () => this.iGlobalScraperService.scrapeIGlobal(name),
         source: 'IGlobal',
       },
       {
-        promise: this.goLocalScraperService.scrapeGoLocal(name, location),
+        run: () => this.goLocalScraperService.scrapeGoLocal(name, location),
         source: 'GoLocal247',
       },
       {
-        promise: this.merchantCircleScraperService.scrapeMerchantCircle(
-          name,
-          location,
-        ),
+        run: () =>
+          this.merchantCircleScraperService.scrapeMerchantCircle(
+            name,
+            location,
+          ),
         source: 'MerchantCircle',
       },
-      // { promise: this.cylexScraperService.scrapeCylex(name, location), source: 'Cylex' },
-      // { promise: this.brownbookScraperService.scrapeBrownbook(name, location), source: 'Brownbook' },
       {
-        promise: this.infobelScraperService.scrapeInfobel(name, location),
+        run: () => this.infobelScraperService.scrapeInfobel(name, location),
         source: 'Infobel',
       },
     ];
 
-    const processTask = async (task: {
-      promise: Promise<any>;
-      source: string;
-    }) => {
-      const resultsArray = await this.safeScrape(task.promise, task.source);
-      const item = resultsArray[0];
+    const results: any[] = new Array(taskFactories.length);
 
-      // Aapka existing formatting logic
-      const isEmpty = !item.name && !item.address && !item.phone;
-      const auditResult = this.checkNAPMatch(item, name, phone, location);
+    // 2. Setup structural processing tracking
+    let currentIndex = 0;
+    const CONCURRENCY_LIMIT = 3; // 🔥 Maximum number of browsers allowed to run at the same time
 
-      const syncedData = await this.syncWithDatabase(item, auditResult.status);
+    const worker = async () => {
+      while (currentIndex < taskFactories.length) {
+        const index = currentIndex++;
+        const task = taskFactories[index];
 
-      // console.log('item', item);
+        // Execute task pipeline safely isolated inside worker allocation
+        const resultsArray = await this.safeScrape(task.run(), task.source);
+        const item = resultsArray[0];
 
-      let finalResult;
+        const isEmpty = !item.name && !item.address && !item.phone;
+        const auditResult = this.checkNAPMatch(item, name, phone, location);
+        const syncedData = await this.syncWithDatabase(
+          item,
+          auditResult.status,
+        );
 
-      if (isEmpty) {
-        // Backend format helper
-        finalResult = {
-          scraped: {
-            name: '',
-            phone: '',
-            address: '',
-          },
-          meta: {
-            source: item.source,
-            locationLink: item.locationLink || '',
-            timestamp: new Date().toISOString(),
-          },
-          audit: {
-            status: 'Mismatch',
-            results: {
-              name: '',
-              phone: '',
-              address: '',
+        let finalResult;
+        if (isEmpty) {
+          finalResult = {
+            scraped: { name: '', phone: '', address: '' },
+            meta: {
+              source: item.source,
+              locationLink: item.locationLink || '',
+              timestamp: new Date().toISOString(),
             },
-            matched: {
-              name: false,
-              phone: false,
-              address: false,
+            audit: {
+              status: 'Mismatch',
+              results: { name: '', phone: '', address: '' },
+              matched: { name: false, phone: false, address: false },
+              score: 0,
             },
-            score: 0,
-          },
-        };
-      } else {
-        finalResult = {
-          scraped:
-            auditResult.status === 'Verified'
-              ? {
-                  name: item.name,
-                  phone: item.phone,
-                  address: item.address,
-                }
-              : {},
-          meta: {
-            source: item.source,
-            locationLink: item.locationLink || '',
-            timestamp: syncedData.foundAt || new Date().toISOString(),
-          },
-          audit: auditResult,
-        };
+          };
+        } else {
+          finalResult = {
+            scraped:
+              auditResult.status === 'Verified'
+                ? { name: item.name, phone: item.phone, address: item.address }
+                : {},
+            meta: {
+              source: item.source,
+              locationLink: item.locationLink || '',
+              timestamp: syncedData.foundAt || new Date().toISOString(),
+            },
+            audit: auditResult,
+          };
+        }
+
+        if (onResultReady) {
+          onResultReady(finalResult);
+        }
+
+        results[index] = finalResult;
       }
-      if (onResultReady) {
-        onResultReady(finalResult);
-      }
-      // console.log(`Result from ${task.source}:`, finalResult);
-      return finalResult;
     };
 
-    // all tasks in parallel mein
-    return Promise.all(tasks.map((task) => processTask(task)));
+    // 3. Fire up the concurrent worker pool workers
+    const workers = Array.from({ length: CONCURRENCY_LIMIT }, () => worker());
+    await Promise.all(workers);
+
+    return results;
   }
 
   checkNAPMatch(
@@ -307,6 +424,7 @@ export class ScraperService {
       const matches = inputParts.filter((part) => sName.includes(part));
       return matches.length / inputParts.length >= 0.4;
     };
+
     const checkAddressMatch = (scrapedAddr: any, inputAddr: any) => {
       if (!scrapedAddr || !inputAddr) return false;
 
@@ -333,15 +451,10 @@ export class ScraperService {
     const inputPhoneClean = cleanPhone(inputPhone);
     const scrapedPhoneClean = cleanPhone(scraped.phone);
 
-    // Name Match
     const isNameMatch = checkNameMatch(scraped.name, inputName);
-    // cleanStr(scraped.name).includes(cleanStr(inputName)) ||
-    // cleanStr(inputName).includes(cleanStr(scraped.name));
     const safeScraped = scraped || {};
-    // Phone Match (Actual digits only)
     const isPhoneMatch =
       inputPhoneClean !== '' && scrapedPhoneClean === inputPhoneClean;
-
     const isAddrMatch = checkAddressMatch(scraped.address, inputLocation);
 
     let matchCount = 0;
@@ -351,18 +464,8 @@ export class ScraperService {
     if (isAddrMatch) matchCount++;
 
     const isVerified = matchCount >= 2;
-    if (matchCount === 0 || !matchCount) {
-      score = 0;
-      // console.log(`0/3 : ${score}%`);
-    } else if (matchCount === 1) {
+    if (matchCount > 0) {
       score = Math.round((matchCount / 3) * 100);
-      // console.log(`1/3 : ${score}%`);
-    } else if (matchCount === 2) {
-      score = Math.round((matchCount / 3) * 100);
-      // console.log(`2/3 : ${score}%`);
-    } else if (matchCount === 3) {
-      score = Math.round((matchCount / 3) * 100);
-      // console.log(`3/3 : ${score}%`);
     }
 
     return {

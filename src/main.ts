@@ -4,7 +4,9 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+  });
   // main.ts
   // Yeh line DTO ke decorators (@IsString etc.) ko active karti hai
   app.useGlobalPipes(
