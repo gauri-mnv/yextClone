@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-base-to-string */
 import { Injectable, Logger } from '@nestjs/common';
 import { chromium } from 'playwright-extra';
 import type { Browser, Page } from 'playwright-core';
@@ -85,12 +88,25 @@ export class InfobelScraperService {
     targetName: string,
     location: string,
   ): Promise<LocationResponseDto[]> {
+
+    
     // Rotate user-agent randomly to reduce bot fingerprinting
     const randomUserAgent =
       USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
     const context = await browser.newContext({ userAgent: randomUserAgent });
     const page = await context.newPage();
+    page.on('console', (msg) => {
+      // You can filter or format the messages here
+      const text = msg.text();
+      if (text.startsWith('[Infobel]')) {
+        this.logger.debug(`[Browser Context] ${text}`);
+      } else {
+        // Optional: Catch all other native browser logs if needed
+         this.logger.verbose(`[Browser Window] ${text}`);
+      }
+    });
+    // -----------------------------------------------------------------
 
     const city = this.extractCity(location);
 
@@ -216,6 +232,8 @@ export class InfobelScraperService {
       await page.waitForSelector('.orderanalysis-table__row', {
         timeout: 15000,
       });
+
+
     } catch {
       this.logger.warn(
         '[Infobel] Results table not found or took too long to load — proceeding anyway',
@@ -246,11 +264,14 @@ export class InfobelScraperService {
       ).find((row) => {
         const rawName = row.querySelector('td a')?.textContent?.trim() ?? '';
 
+
+      console.log(`[Infobel] table found :${rawName}`);
+
         const cleanName = rawName
           .toLowerCase()
           .replace(/^\d+\.\s*/, '') // Strip leading numbering e.g. "6. "
           .replace(/[^a-z0-9]/g, ''); // Keep only alphanumeric characters
-
+ console.log(`[Infobel] cleanName :${cleanName }`);
         return (
           cleanName.includes(targetClean) || targetClean.includes(cleanName)
         );
@@ -273,26 +294,36 @@ export class InfobelScraperService {
     sourceUrl: string,
   ): Promise<LocationResponseDto> {
     return page.evaluate((link: string): LocationResponseDto => {
-      const name = document.querySelector('h1')?.textContent?.trim() ?? '—';
+      const name = document.querySelector('.banner-results__header--one')?.textContent?.trim() ?? '—';
 
       const address =
         document
-          .querySelector('.address-text, .location-info, [itemprop="address"]')
+          .querySelector('.banner-results__content')
           ?.textContent?.trim() ?? '—';
 
       // Strip "Tel." label that Infobel prepends to the phone number display
+      // const phone =
+      //   document
+      //     .querySelector('.detail-info__content .detail-info__content--value')
+      //     ?.textContent?.replace('Tel.', '')
+      //     .trim() ?? '—';
+
       const phone =
-        document
-          .querySelector('a[href^="tel:"]')
-          ?.textContent?.replace('Tel.', '')
-          .trim() ?? '—';
+  Array.from(document.querySelectorAll('.detail-info__content'))
+    .find((el) =>
+      el
+        .querySelector('.detail-info__content--header')
+        ?.textContent?.includes('Phone number')
+    )
+    ?.querySelector('.detail-info__content--value')
+    ?.textContent?.trim() ?? '—';
 
       // External website: first outbound link that is not an Infobel internal link
       // const website =
       //   document.querySelector<HTMLAnchorElement>(
       //     'a[href^="http"]:not([href*="infobel"])',
       //   )?.href ?? '—';
-
+      console.log(`[Infobel] result name :${name }`);
       return {
         name,
         address,

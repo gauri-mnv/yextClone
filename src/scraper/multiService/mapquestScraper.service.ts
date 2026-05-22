@@ -1,22 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Browser, BrowserContext, chromium, Page } from 'playwright';
+import { Browser, chromium, Page } from 'playwright';
 import { LocationResponseDto } from '../dto/location-response.dto';
 
 /** Base URL for MapQuest business search */
 const MAPQUEST_SEARCH_BASE = 'https://www.mapquest.com/search/';
 
-/** Maximum number of detail page links to visit per search */
-const MAX_LINKS_TO_VISIT = 6;
-
-/**
- * Delay in milliseconds to allow dynamic content to render
- * after the initial page load on MapQuest search results.
- */
-const PAGE_RENDER_DELAY_MS = 3000;
+/** Maximum number of search result cards to extract directly from the page layout */
+const MAX_RESULTS_TO_PROCESS = 6;
 
 /**
  * Service responsible for scraping business location data from MapQuest
- * using a headless Chromium browser via Playwright.
+ * using a highly optimized, headless Chromium instance via Playwright.
+ * * Performance Tuning: This implementation bypasses heavy detail-page jumps
+ * by extracting data directly from DOM elements found on the primary results feed.
  */
 @Injectable()
 export class MapQuestScraperService {
@@ -25,7 +21,7 @@ export class MapQuestScraperService {
   /**
    * Scrapes MapQuest for businesses matching the given search query.
    *
-   * @param query - Search term (e.g. "Airdrie Choice Dental Alberta")
+   * @param query - Search term (e.g. "Airdrie Choice Dental")
    * @returns A promise resolving to an array of matched LocationResponseDto objects
    */
   async scrapeMapQuest(query: string): Promise<LocationResponseDto[]> {
@@ -35,6 +31,8 @@ export class MapQuestScraperService {
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
+        // Optimization: Stop rendering assets like images at the engine level to conserve bandwidth
+        '--blink-settings=imagesEnabled=false',
       ],
     });
 
@@ -46,7 +44,7 @@ export class MapQuestScraperService {
       );
       return [];
     } finally {
-      // Always release the browser resource regardless of outcome
+      // Always guarantee the browser instance releases system memory resources
       await browser.close();
     }
   }
@@ -56,12 +54,12 @@ export class MapQuestScraperService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Orchestrates the full scraping flow:
-   * build URL → wait for render → collect links → visit each detail page.
+   * Orchestrates the direct scraping workflow: Intercepts assets, navigates,
+   * reactively waits for nodes, and maps matches cleanly.
    *
    * @param browser - Active Playwright Browser instance
    * @param query   - Original search query string
-   * @returns All matched location results
+   * @returns Matched location results
    */
   private async performScraping(
     browser: Browser,
@@ -75,101 +73,71 @@ export class MapQuestScraperService {
 
     const page = await context.newPage();
 
+    // Optimization: Block network requests for heavy visual dependencies that don't impact text extraction
+    await page.route('**/*', (route) => {
+      const resourceType = route.request().resourceType();
+      if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+        return route.abort();
+      }
+      return route.continue();
+    });
+
     const searchUrl = `${MAPQUEST_SEARCH_BASE}${encodeURIComponent(query)}`;
     this.logger.log(`[MapQuest] Searching: ${searchUrl}`);
 
+    // Speed Optimization: "commit" lets us evaluate data immediately when HTML payload lands
     await page.goto(searchUrl, {
-      waitUntil: 'domcontentloaded',
-      timeout: 40000,
+      waitUntil: 'commit',
+      timeout: 30000,
     });
 
-    // MapQuest renders results dynamically — wait for JS to settle
-    await page.waitForTimeout(PAGE_RENDER_DELAY_MS);
+    // Optimization: Reactive dynamic wait. Program moves instantly the exact millisecond content appears
+    const cardSelector = 'a[role="listitem"][data-testid="search-card"]';
+    try {
+      await page
+        .locator(cardSelector)
+        .first()
+        .waitFor({ state: 'visible', timeout: 8000 });
+    } catch {
+      this.logger.warn(
+        `[MapQuest] Timeout waiting for search cards to appear in the DOM.`,
+      );
+      return [];
+    }
 
-    const detailLinks = await this.collectDetailLinks(page);
-    this.logger.log(`[MapQuest] Found ${detailLinks.length} detail links`);
+    // Safely extract structural business nodes right out of the browser sandbox execution context
+    const extractedCards = await this.extractCardsFromPage(
+      page,
+      MAX_RESULTS_TO_PROCESS,
+    );
+    this.logger.log(
+      `[MapQuest] Harvested ${extractedCards.length} raw profile components from page.`,
+    );
 
-    return this.visitDetailPages(context, detailLinks, query);
-  }
-
-  /**
-   * Extracts unique business detail page URLs from the MapQuest search results.
-   * Filters out navigation, search, and directions links — keeping only
-   * deep business profile links (URL depth > 5 segments).
-   *
-   * @param page - Playwright Page showing MapQuest search results
-   * @returns Deduplicated array of business detail URLs (capped at MAX_LINKS_TO_VISIT)
-   */
-  private async collectDetailLinks(page: Page): Promise<string[]> {
-    return page.evaluate((maxLinks: number) => {
-      return Array.from(document.querySelectorAll('a'))
-        .map((anchor) => anchor.href)
-        .filter(
-          (href) =>
-            href.includes('mapquest.com/') &&
-            href.split('/').length > 5 && // Only deep business profile links
-            !href.includes('/search') &&
-            !href.includes('/directions'),
-        )
-        .filter((href, index, self) => self.indexOf(href) === index) // Deduplicate
-        .slice(0, maxLinks);
-    }, MAX_LINKS_TO_VISIT);
-  }
-
-  /**
-   * Iterates over detail page links and collects all results whose
-   * business name closely matches the original search query.
-   *
-   * Matching is case-insensitive and strips non-alphanumeric characters
-   * so punctuation and spacing differences are ignored.
-   *
-   * @param context - Playwright BrowserContext used to open new tabs
-   * @param links   - Business detail page URLs to visit
-   * @param query   - Original search query used for name matching
-   * @returns Array of all matched LocationResponseDto results
-   */
-  private async visitDetailPages(
-    context: BrowserContext,
-    links: string[],
-    query: string,
-  ): Promise<LocationResponseDto[]> {
     const targetClean = this.normalizeForComparison(query);
     const results: LocationResponseDto[] = [];
 
-    for (const link of links) {
-      const detailPage = await context.newPage();
+    // Filter, validate, and build standardized objects
+    for (const card of extractedCards) {
+      // Skip element entry placeholders that failed structural processing
+      if (card.name === '—') continue;
 
-      try {
-        await detailPage.goto(link, {
-          waitUntil: 'domcontentloaded',
-          timeout: 25000,
-        });
+      const foundClean = this.normalizeForComparison(card.name);
+      const isMatch =
+        foundClean.includes(targetClean) || targetClean.includes(foundClean);
 
-        const extracted = await this.extractBusinessDetails(detailPage, link);
-        const foundClean = this.normalizeForComparison(extracted.name);
-
-        const isMatch =
-          foundClean.includes(targetClean) || targetClean.includes(foundClean);
-
-        if (isMatch) {
-          this.logger.log(`[MapQuest] Match found: "${extracted.name}"`);
-          results.push({
-            name: extracted.name,
-            address: extracted.address,
-            phone: extracted.phone,
-            locationLink: link,
-            source: 'MapQuest',
-            timestamp: new Date().toISOString(),
-          });
-        }
-      } catch (error) {
-        this.logger.warn(
-          `[MapQuest] Failed to scrape detail page ${link}: ` +
-            `${error instanceof Error ? error.message : String(error)}`,
+      if (isMatch) {
+        this.logger.log(
+          `[MapQuest] Match found on layout stream: "${card.name}"`,
         );
-      } finally {
-        // Always close the tab — even if an error was thrown
-        await detailPage.close();
+        results.push({
+          name: card.name,
+          address: card.address,
+          phone: card.phone,
+          locationLink: card.locationLink,
+          source: 'MapQuest',
+          timestamp: new Date().toISOString(),
+        });
       }
     }
 
@@ -177,43 +145,70 @@ export class MapQuestScraperService {
   }
 
   /**
-   * Extracts structured business details from a MapQuest business detail page.
-   * Uses multiple selector fallbacks for address to handle varying page layouts.
-   * Phone number is extracted from the tel: href for accuracy over display text.
+   * Targets the search result list components dynamically from the active page view.
+   * Uses isolation patterns so localized structural mutations don't kill the worker.
    *
-   * @param page       - Playwright Page loaded with the business detail URL
-   * @param sourceLink - The URL of the detail page, used as locationLink
-   * @returns Raw extracted business data
+   * @param page       - The active Playwright page resource
+   * @param maxResults - Upper constraint on items evaluated
+   * @returns Array of raw data collections extracted from elements
    */
-  private async extractBusinessDetails(
+  private async extractCardsFromPage(
     page: Page,
-    sourceLink: string,
-  ): Promise<RawBusinessDetail> {
-    return page.evaluate((link: string): RawBusinessDetail => {
-      // Prefer h1; fall back to infosheet header innerHTML
-      const name =
-        document.querySelector('h1')?.innerText ??
-        document.querySelector('[data-testid="infosheet-header"]')?.innerHTML ??
-        '—';
+    maxResults: number,
+  ): Promise<RawBusinessDetail[]> {
+    return page.evaluate((limit) => {
+      // Targets the search result <a> wrapper anchors seen in the DevTools snapshot
+      const anchors = Array.from(
+        document.querySelectorAll(
+          'a[role="listitem"][data-testid="search-card"]',
+        ),
+      );
 
-      // Try multiple address selectors to handle layout variations
-      const address =
-        (
-          document.querySelector('[data-testid="details-address-text"]') ??
-          document.querySelector('.address-container span') ??
-          document.querySelector('.address')
-        )?.textContent
-          ?.trim()
-          .replace(/\s+/g, ' ') ?? '—';
+      return anchors.slice(0, limit).map((anchor) => {
+        try {
+          const htmlAnchor = anchor as HTMLAnchorElement;
 
-      // Extract phone from tel: href — more reliable than display text
-      const telHref = document
-        .querySelector('[data-testid="bento-call"]')
-        ?.getAttribute('href');
-      const phone = telHref ? telHref.replace('tel:', '').trim() : '—';
+          // 1. Link Extraction: Grab profile target URL directly from the card container layout
+          const locationLink = htmlAnchor.href || '';
 
-      return { name: name.trim(), address, phone, locationLink: link };
-    }, sourceLink);
+          // 2. Name Extraction: Target the specific header tag inside the card container text space
+          const nameEl = htmlAnchor.querySelector('h3');
+          const name = nameEl ? nameEl.innerText.trim() : '—';
+
+          // 3. Address Extraction: Pull interior block elements cleanly
+          const addressBlock = htmlAnchor.querySelector(
+            '[data-testid="search-card-address"]',
+          );
+          let address = '—';
+          if (addressBlock) {
+            // Locate component spans to divide street segments cleanly from city/state values
+            const spans = Array.from(addressBlock.querySelectorAll('span'));
+            address =
+              spans.length > 0
+                ? spans
+                    .map((span) => span.innerText.trim())
+                    .filter(Boolean)
+                    .join(', ')
+                : (addressBlock as HTMLElement).innerText
+                    .trim()
+                    .replace(/\s+/g, ' '); // Inline text string fallback
+          }
+
+          // 4. Phone Extraction: Grab structural dial strings by testing target attributes
+          const phoneEl = htmlAnchor.querySelector(
+            '[data-testid="search-card-phone"]',
+          );
+          const phone = phoneEl
+            ? (phoneEl as HTMLElement).innerText.trim()
+            : '—';
+
+          return { name, address, phone, locationLink };
+        } catch {
+          // Failure Boundary: Keep worker alive if a rogue A/B variant item card layout breaks structural parsing
+          return { name: '—', address: '—', phone: '—', locationLink: '' };
+        }
+      });
+    }, maxResults);
   }
 
   /**
@@ -232,7 +227,7 @@ export class MapQuestScraperService {
 // Internal Types
 // ---------------------------------------------------------------------------
 
-/** Shape of raw data extracted from a MapQuest business detail page */
+/** Shape of raw data extracted directly from a MapQuest business card element */
 interface RawBusinessDetail {
   name: string;
   address: string;

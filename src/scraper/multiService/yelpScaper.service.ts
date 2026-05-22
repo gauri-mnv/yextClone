@@ -124,6 +124,18 @@ export class YelpScraperService {
     const context = await this.newStealthContext(browser);
     const page = await context.newPage();
 
+    page.on('console', (msg) => {
+      // You can filter or format the messages here
+      const text = msg.text();
+      if (text.startsWith('[Infobel]')) {
+        this.logger.debug(`[Browser Context] `);
+      } else {
+        // Optional: Catch all other native browser logs if needed
+        this.logger.verbose(`[Browser Window] `);
+      }
+    });
+    // -----------------------------------------------------------------
+
     const searchUrl =
       `https://www.yelp.com/search` +
       `?find_desc=${encodeURIComponent(businessName)}` +
@@ -149,7 +161,9 @@ export class YelpScraperService {
       })
       .catch(() => null);
 
-    const businessLinks = await this.collectBusinessLinks(page);
+    const businessLinks = await this.collectBusinessLinks(page, businessName);
+
+    console.log(`businessLinks`, businessLinks);
 
     if (businessLinks.length === 0) {
       this.logger.warn(`[Yelp] No business links found on attempt ${attempt}`);
@@ -252,42 +266,122 @@ export class YelpScraperService {
     return context;
   }
 
+  // /**
+  //  * Extracts unique Yelp business detail page URLs from the search results page.
+  //  * Tries the primary card selector first, then falls back to any /biz/ link.
+  //  * Strips query parameters to get canonical business URLs.
+  //  *
+  //  * NOTE: This runs in Node.js context (not browser evaluate) to avoid
+  //  * the scoping issue where `this.logger` and `page` are inaccessible
+  //  * inside page.evaluate().
+  //  *
+  //  * @param page - Playwright Page showing Yelp search results
+  //  * @returns Deduplicated array of business detail URLs
+  //  */
+  // // private async collectBusinessLinks(page: Page): Promise<string[]> {
+
+  // //   return page.evaluate((): string[] => {
+  // //     const out = new Set<string>();
+
+  // //     // Primary selector: structured result cards
+  // //     document
+  // //       .querySelectorAll('div[data-testid="serp-ia-card"] h3 a')
+  // //       .forEach((anchor) => {
+  // //         const href = (anchor as HTMLAnchorElement).href;
+  // //         if (href.includes('/biz/')) {
+  // //           out.add(href.split('?')[0]);
+  // //         }
+  // //       });
+
+  // //     // Fallback: any /biz/ link on the page
+  // //     if (out.size === 0) {
+  // //       document.querySelectorAll('a[href*="/biz/"]').forEach((anchor) => {
+  // //         const href = (anchor as HTMLAnchorElement).href;
+  // //         if (!href.includes('adredir')) out.add(href.split('?')[0]);
+  // //       });
+  // //     }
+
+  // //     return [...out];
+  // //   });
+  // // }
+
   /**
-   * Extracts unique Yelp business detail page URLs from the search results page.
-   * Tries the primary card selector first, then falls back to any /biz/ link.
-   * Strips query parameters to get canonical business URLs.
+   * Extracts verified business profile links from Yelp search results.
+   * Pulls both the business name and link from the structured cards, then
+   * applies dynamic filtering to prevent capturing irrelevant sidebar recommendations.
    *
-   * NOTE: This runs in Node.js context (not browser evaluate) to avoid
-   * the scoping issue where `this.logger` and `page` are inaccessible
-   * inside page.evaluate().
-   *
-   * @param page - Playwright Page showing Yelp search results
-   * @returns Deduplicated array of business detail URLs
+   * @param page  - Playwright Page context pointing to Yelp search results
+   * @param query - The original target search term used for validation matching
+   * @returns Deduplicated array of verified business profile URLs
    */
-  private async collectBusinessLinks(page: Page): Promise<string[]> {
-    return page.evaluate((): string[] => {
+  private async collectBusinessLinks(
+    page: Page,
+    query: string,
+  ): Promise<string[]> {
+    // String matching parameters ke liye normalization utility function ka scope text prepare karein
+    const targetClean = this.normalizeForComparison(query);
+
+    return page.evaluate((target: string) => {
       const out = new Set<string>();
 
-      // Primary selector: structured result cards
-      document
-        .querySelectorAll('div[data-testid="serp-ia-card"] h3 a')
-        .forEach((anchor) => {
-          const href = (anchor as HTMLAnchorElement).href;
-          if (href.includes('/biz/') && !href.includes('adredir')) {
-            out.add(href.split('?')[0]);
-          }
-        });
+      // Internal helper function kyunki browser runtime context ke andar class methods available nahi hote
+      const cleanString = (val: string) =>
+        val.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-      // Fallback: any /biz/ link on the page
+      // 1. Primary Extraction Path: Target the dedicated result card containers
+      const cards = document.querySelectorAll(
+        'div[data-testid="serp-ia-card"]',
+      );
+
+      cards.forEach((card) => {
+        try {
+          // Screenshot ke mutabik text element ko isolate karein aur name target karein
+          const anchor = card.querySelector(
+            'div[data-traffic-crawl-id="SearchResultBizName"] h3 a',
+          ) as HTMLAnchorElement;
+
+          if (anchor && anchor.href && anchor.href.includes('/biz/')) {
+            const bizName = anchor.innerText || '—';
+            const foundClean = cleanString(bizName);
+
+            // Validation: Agar business ka naam query se match karta hai, tabhi link ko save karo
+            if (foundClean.includes(target) || target.includes(foundClean)) {
+              out.add(anchor.href.split('?')[0]);
+            }
+          }
+        } catch {
+          // Block boundary: Skip broken elements silently if any dynamic A/B layout mismatch happens
+        }
+      });
+
+      // 2. Structural Fallback: Agar primary container selector fail ho jaye (Yelp layout update kare)
       if (out.size === 0) {
         document.querySelectorAll('a[href*="/biz/"]').forEach((anchor) => {
-          const href = (anchor as HTMLAnchorElement).href;
-          if (!href.includes('adredir')) out.add(href.split('?')[0]);
+          try {
+            const htmlAnchor = anchor as HTMLAnchorElement;
+            if (!htmlAnchor.href.includes('adredir')) {
+              const bizName = htmlAnchor.innerText || '—';
+              const foundClean = cleanString(bizName);
+
+              if (foundClean.includes(target) || target.includes(foundClean)) {
+                out.add(htmlAnchor.href.split('?')[0]);
+              }
+            }
+          } catch {
+            // Keep loop moving forward
+          }
         });
       }
 
       return [...out];
-    });
+    }, targetClean); // Passing the sanitized target query directly into the browser context execution execution scope
+  }
+
+  /**
+   * Normalizes strings for secure comparison metrics.
+   */
+  private normalizeForComparison(value: string): string {
+    return value.toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
   /**
