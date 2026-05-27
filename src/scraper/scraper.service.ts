@@ -11,6 +11,7 @@ import {
   ProfileCanadaScraperService,
   IGlobalScraperService,
   InfobelScraperService,
+  // BrownbookScraperService,
 } from './multiService';
 import {
   InstagramScraperService,
@@ -43,13 +44,14 @@ export class ScraperService {
     private goLocalScraperService: GoLocalScraperService,
     private merchantCircleScraperService: MerchantCircleScraperService,
     private infobelScraperService: InfobelScraperService,
+    // private brownbookScraperService: BrownbookScraperService,
   ) {}
 
   private async syncWithDatabase(
     scrapedData: any,
     auditStatus: string,
   ): Promise<any> {
-    if (!scrapedData?.locationLink) return scrapedData;
+    // if (!scrapedData?.locationLink) return scrapedData;
 
     try {
       const existing: any = await this.locationRepo.findOne({
@@ -60,6 +62,7 @@ export class ScraperService {
         name: scrapedData.name || '',
         address: scrapedData.address || '',
         phone: scrapedData.phone || '',
+        locationLink: scrapedData.locationLink || '',
         source: scrapedData.source,
         status: auditStatus,
       };
@@ -334,6 +337,10 @@ export class ScraperService {
         run: () => this.infobelScraperService.scrapeInfobel(name, location),
         source: 'Infobel',
       },
+      // {
+      //   run: () => this.brownbookScraperService.scrapeBrownbook(name),
+      //   source: 'Brownbook',
+      // },
     ];
 
     const results: any[] = new Array(taskFactories.length);

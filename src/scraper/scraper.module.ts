@@ -11,6 +11,7 @@ import {
   ProfileCanadaScraperService,
   IGlobalScraperService,
   InfobelScraperService,
+  //BrownbookScraperService,
 } from './multiService';
 import {
   InstagramScraperService,
@@ -20,6 +21,7 @@ import {
   GoLocalScraperService,
   MerchantCircleScraperService,
 } from './demoService';
+import { VisionAiService, CaptchaSolverService } from './captchaSolver';
 import { ScraperGateway } from './scraper.gateway';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -43,9 +45,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     IGlobalScraperService,
     GoLocalScraperService,
     MerchantCircleScraperService,
-    // BrownbookScraperService,
+    //BrownbookScraperService,
     // CylexScraperService,
     InfobelScraperService,
+    VisionAiService,
+    CaptchaSolverService,
   ],
 })
 export class ScraperModule {}
