@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   GoogleMapsScraperService,
   YelpScraperService,
@@ -11,6 +11,13 @@ import {
   ProfileCanadaScraperService,
   IGlobalScraperService,
   InfobelScraperService,
+  AppleMapsScraperService,
+  OpenStreetMapScraperService,
+  KompassScraperService,
+  StoreboardScraperService,
+  ZeemapsScraperService,
+  IbeginScraperService,
+  BizpagesScraperService,
   // BrownbookScraperService,
 } from './multiService';
 import {
@@ -24,6 +31,7 @@ import {
 import { Location } from './location.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { AcompioScraperService } from './multiService/acompioScraper.service';
 
 @Injectable()
 export class ScraperService {
@@ -44,15 +52,33 @@ export class ScraperService {
     private goLocalScraperService: GoLocalScraperService,
     private merchantCircleScraperService: MerchantCircleScraperService,
     private infobelScraperService: InfobelScraperService,
+    private acompioScraperService: AcompioScraperService,
+    private appleMapsScraperService: AppleMapsScraperService,
+    private openstreetmapScraperService: OpenStreetMapScraperService,
+    private kompassScraperService: KompassScraperService,
+    private storeboardScraperService: StoreboardScraperService,
+    private zeemapsScraperService: ZeemapsScraperService,
+    private ibeginScraperService: IbeginScraperService,
+    private bizpagesScraperService: BizpagesScraperService,
+
     // private brownbookScraperService: BrownbookScraperService,
   ) {}
-
+  private readonly logger = new Logger(ScraperService.name);
   private async syncWithDatabase(
     scrapedData: any,
     auditStatus: string,
   ): Promise<any> {
     // if (!scrapedData?.locationLink) return scrapedData;
-
+    if (
+      !scrapedData ||
+      !scrapedData.locationLink ||
+      scrapedData.locationLink.trim() === ''
+    ) {
+      console.warn(
+        `[Sync Skip] ${scrapedData?.source || 'Unknown'} skipped due to missing locationLink.`,
+      );
+      return scrapedData;
+    }
     try {
       const existing: any = await this.locationRepo.findOne({
         where: { locationLink: scrapedData.locationLink },
@@ -62,7 +88,7 @@ export class ScraperService {
         name: scrapedData.name || '',
         address: scrapedData.address || '',
         phone: scrapedData.phone || '',
-        locationLink: scrapedData.locationLink || '',
+        locationLink: scrapedData.locationLink || scrapedData.website,
         source: scrapedData.source,
         status: auditStatus,
       };
@@ -75,17 +101,22 @@ export class ScraperService {
 
         if (hasChanged) {
           const updated = await this.locationRepo.save({
+            id: existing.id,
             ...existing,
             ...newData,
           });
           return {
             ...updated,
-            timestamp: updated.foundAt.toISOString(),
+            timestamp: updated.foundAt
+              ? updated.foundAt.toISOString()
+              : new Date().toISOString(),
           };
         }
         return {
           ...existing,
-          timestamp: existing.foundAt.toISOString(),
+          timestamp: existing.foundAt
+            ? existing.foundAt.toISOString()
+            : new Date().toISOString(),
           status: existing.status,
         };
       } else {
@@ -94,11 +125,13 @@ export class ScraperService {
         );
         return {
           ...saved,
-          timestamp: saved.foundAt.toISOString(),
+          timestamp: saved.foundAt
+            ? saved.foundAt.toISOString()
+            : new Date().toISOString(),
         };
       }
     } catch (error) {
-      console.error(
+      this.logger.log(
         `[Sync Error] ${scrapedData.source} Failed to sync with database: ${error}`,
       );
       return scrapedData;
@@ -337,6 +370,39 @@ export class ScraperService {
         run: () => this.infobelScraperService.scrapeInfobel(name, location),
         source: 'Infobel',
       },
+      {
+        run: () => this.acompioScraperService.scrapeAcompio(name, location),
+        source: 'Acompio',
+      },
+      {
+        run: () => this.appleMapsScraperService.scrapeAppleMaps(name, location),
+        source: 'Apple Maps',
+      },
+      {
+        run: () =>
+          this.openstreetmapScraperService.scrapeOpenStreetMap(name, location),
+        source: 'OpenStreetMap',
+      },
+      {
+        run: () => this.kompassScraperService.scrapeKompass(name),
+        source: 'Kompass',
+      },
+      {
+        run: () => this.storeboardScraperService.scrapeStoreboard(name),
+        source: 'Storeboard',
+      },
+      {
+        run: () => this.zeemapsScraperService.scrapeZeemaps(name),
+        source: 'Zeemaps',
+      },
+      {
+        run: () => this.ibeginScraperService.scrapeIbegin(name, location),
+        source: 'iBegin',
+      },
+      {
+        run: () => this.bizpagesScraperService.scrapeBizpages(name, location),
+        source: 'Bizpages',
+      },
       // {
       //   run: () => this.brownbookScraperService.scrapeBrownbook(name),
       //   source: 'Brownbook',
@@ -347,7 +413,7 @@ export class ScraperService {
 
     // 2. Setup structural processing tracking
     let currentIndex = 0;
-    const CONCURRENCY_LIMIT = 3; // 🔥 Maximum number of browsers allowed to run at the same time
+    const CONCURRENCY_LIMIT = 3;
 
     const worker = async () => {
       while (currentIndex < taskFactories.length) {
@@ -371,7 +437,7 @@ export class ScraperService {
             scraped: { name: '', phone: '', address: '' },
             meta: {
               source: item.source,
-              locationLink: item.locationLink || '',
+              locationLink: item.locationLink || item.website || '',
               timestamp: new Date().toISOString(),
             },
             audit: {
@@ -389,7 +455,7 @@ export class ScraperService {
                 : {},
             meta: {
               source: item.source,
-              locationLink: item.locationLink || '',
+              locationLink: item.locationLink || item.website || '',
               timestamp: syncedData.foundAt || new Date().toISOString(),
             },
             audit: auditResult,
