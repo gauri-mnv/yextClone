@@ -18,7 +18,7 @@ export class BizpagesScraperService {
     location: string,
   ): Promise<LocationResponseDto[]> {
     const browser = await puppeteer.launch({
-      headless: false, // Turn true for production server execution
+      headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 

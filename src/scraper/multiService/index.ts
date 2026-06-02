@@ -17,3 +17,4 @@ export * from './storeboard-scraper.service';
 export * from './zeemapsScraper.service';
 export * from './IbeginScraper.service';
 export * from './bizpagesScraper.service';
+export * from './acompioScraper.service';

@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-floating-promises */
 import { Injectable, Logger } from '@nestjs/common';
 import puppeteer, { Page } from 'puppeteer';
 import { LocationResponseDto } from '../dto/location-response.dto';
+import path from 'path';
 
 @Injectable()
 export class StoreboardScraperService {
@@ -10,67 +11,70 @@ export class StoreboardScraperService {
 
   /**
    * Main Entry point for Storeboard direct lookup pipeline
-   * @param companySlug The company identifier or slug used in the URL (e.g., 'SwanavonDentalClinic' or 'airdriechoicedental')
+   * @param companySlug The company identifier or slug used in the URL
    */
   public async scrapeStoreboard(
     companySlug: string,
   ): Promise<LocationResponseDto[]> {
     // Standard clean browser configuration
     const browser = await puppeteer.launch({
-      headless: true, // Turn true for headless server deployments
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--window-size=1920,1080',
+        '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      ],
     });
-
-    const context = await browser.createBrowserContext();
-    const page = await context.newPage();
-
-    // Performance booster: Intercept and abort resource-heavy tracking frames or images
-    await page.setRequestInterception(true);
-    page.on('request', (req) => {
-      if (['image', 'font', 'media'].includes(req.resourceType())) req.abort();
-      else req.continue();
-    });
-
-    // 🔥 FIX: Spaces ko hatao, sab kuch lowercase karo aur slashes clean karo
-    const cleanSlug = companySlug
-      .toLowerCase() // Sab kuch lowercase karne ke liye
-      .replace(/\s+/g, '') // Saari spaces hatane ke liye (Airdrie Choice Dental -> airdriechoicedental)
-      .replace(/^\/+|\/+$/g, ''); // Aage-piche ke extra slashes hatane ke liye
-
-    const targetLink = `https://www.storeboard.com/${cleanSlug}`;
 
     try {
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1920, height: 1080 });
+      const cleanSlug = companySlug
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/^\/+|\/+$/g, '');
+
+      const targetLink = `https://www.storeboard.com/${cleanSlug}`;
       this.logger.log(`[Storeboard] Direct navigation targeted: ${targetLink}`);
 
-      // Go to page with strict timeout configuration
-      await page.goto(targetLink, {
-        waitUntil: 'networkidle2',
-        timeout: 45000,
+      // Go to page with strict network idle configuration (0 active connections)
+      const response = await page.goto(targetLink, {
+        waitUntil: 'domcontentloaded',
+        timeout: 60000,
       });
-      // Confirm we didn't hit an error or empty profile page
-      this.logger.log(`[Storeboard] Waiting for profile container element...`);
-      // await page
-      //   .waitForSelector('.page-content_pofile', { timeout: 30000 })
-      //   .catch(() => {
-      //     this.logger.warn('Warning:.page-content_pofile not found in time!');
-      //   });
 
       this.logger.log(
-        `[Storeboard] Waiting strictly for structural elements...`,
+        `[Storeboard] Enforcing strict wait for profile element blocks...`,
       );
 
-      await page
-        .waitForSelector('#tblProfileDisplay, td.mainlinkBlack, h1', {
-          timeout: 20000,
-        })
-        .catch(() => {
-          this.logger.warn(
-            'Warning: Core profile elements took too long to render!',
-          );
-        });
+      this.logger.log(
+        `[Storeboard] HTTP Status Code Received: ${response?.status()}`,
+      );
 
-      // Safe buffer sync pause
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      this.logger.log(
+        `[Storeboard] Waiting up to 15s for core layout selectors...`,
+      );
+      // 🔥 FIX: Instead of swallowing the error immediately and continuing,
+      // we await the evaluation of structural selectors properly.
+      try {
+        await page.waitForSelector(
+          '#tblProfileDisplay, .page-content-title,td.mainlinkBlack',
+          {
+            visible: true,
+            timeout: 15000,
+          },
+        );
+      } catch (err) {
+        this.logger.warn(
+          'Warning: Core profile elements took too long to render! Attempting fallback parsing anyway.',
+        );
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      this.logger.log(`[Storeboard] Launching Final DOM Extraction...`);
       // Extract raw data structures out of specific key matrix markers
       const extracted = await this.parseProfileFields(page);
 
@@ -102,9 +106,25 @@ export class StoreboardScraperService {
       await browser.close();
       return [result];
     } catch (error) {
-      this.logger.error(
-        `[Storeboard Core Exception Engine]: ${error || error}`,
-      );
+      this.logger.error(`[Storeboard Core Exception Engine]: ${error}`);
+      try {
+        const screenshotPath = path.join(
+          process.cwd(),
+          `storeboard-error-${Date.now()}.png`,
+        );
+        await browser.pages().then(async (pages) => {
+          if (pages.length > 0) {
+            await pages[0].screenshot({ path: screenshotPath, fullPage: true });
+            this.logger.log(
+              `[Storeboard Debug] Error screenshot generated at: ${screenshotPath}`,
+            );
+          }
+        });
+      } catch (screenshotErr) {
+        this.logger.error(
+          `Failed to capture diagnostic screenshot: ${screenshotErr}`,
+        );
+      }
       await browser.close();
       return [];
     }
@@ -112,10 +132,6 @@ export class StoreboardScraperService {
 
   /**
    * DOM Parsing Engine meticulously tailored for Storeboard profile layout structure
-   * Built from specific DOM element node targets shown in visual inspector panels
-   */
-  /**
-   * Final Bulletproof DOM Parsing Engine
    */
   private async parseProfileFields(page: Page): Promise<{
     name: string;
@@ -142,30 +158,24 @@ export class StoreboardScraperService {
       let website = '—';
       let aboutText = '';
 
-      // 2. Target all rows inside the main layout profile table
+      // Target all rows inside the layout profile tables
       const dataRows = Array.from(
-        document.querySelectorAll('  #tblProfileDisplay tr, table tr'),
+        document.querySelectorAll('#tblProfileDisplay tr, table tr'),
       );
 
       dataRows.forEach((row) => {
-        // Row ke andar ke saare td elements nikalen
         const cells = Array.from(row.querySelectorAll('td'));
-        if (cells.length < 2) return; // Agar row me label aur value nahi h, toh skip karein
+        if (cells.length < 2) return;
 
-        // Pehla td hamesha label hota hai (e.g., "About", "Location")
         const cellLabel = cells[0].textContent?.toLowerCase().trim() || '';
-
-        // Dusra td container hota hai jisme actual data hota hai
         const cellValueContainer = cells[1];
 
         if (cellValueContainer) {
-          // Pure container ka text default plain extract nikalen
           const rawText = cellValueContainer.textContent?.trim() || '';
 
           if (cellLabel === 'about') {
             aboutText = rawText;
           } else if (cellLabel === 'location') {
-            // Inner cell content clean check (apke screenshot ke mainlinkBlack check ke sath)
             const deepText =
               cellValueContainer.querySelector('.mainlinkBlack')?.textContent ||
               rawText;
@@ -184,8 +194,8 @@ export class StoreboardScraperService {
         }
       });
 
-      // 3. Phone Fallback extract from About block text using dynamic regex
-      if (aboutText) {
+      // Phone Fallback extract from About block text using dynamic regex
+      if (aboutText && phone === '—') {
         const phoneRegex =
           /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
         const matchedPhones = aboutText.match(phoneRegex);

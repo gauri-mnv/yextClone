@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
@@ -308,52 +309,52 @@ export class ScraperService {
   ): Promise<any[]> {
     // 1. Define our factory array (wrapped execution scopes)
     const taskFactories = [
-      {
-        run: () =>
-          this.googleMapsScraperService.scrapeGoogleMaps(
-            `${name} ${location} `,
-          ),
-        source: 'Google Maps',
-      },
+      // {
+      //   run: () =>
+      //     this.googleMapsScraperService.scrapeGoogleMaps(
+      //       `${name} ${location} `,
+      //     ),
+      //   source: 'Google Maps',
+      // },
       {
         run: () =>
           this.yelpScraperService.scrapeYelp(`${name} `, `${location}`),
         source: 'Yelp',
       },
-      { run: () => this.n49Service.scrapeN49(name, location), source: 'N49' },
-      {
-        run: () => this.mapquestService.scrapeMapQuest(`${name} ${location}`),
-        source: 'MapQuest',
-      },
-      {
-        run: () => this.opendiService.scrapeOpendi(name, location),
-        source: 'Opendi',
-      },
-      {
-        run: () =>
-          this.profileCanadaService.scrapeProfileCanada(name, location),
-        source: 'Profile Canada',
-      },
-      {
-        run: () => this.instagramService.scrapeInstagram(name),
-        source: 'Instagram',
-      },
-      {
-        run: () => this.wheretoScraperService.scrapeWhereTo(name, location),
-        source: 'WhereTo',
-      },
+      // { run: () => this.n49Service.scrapeN49(name, location), source: 'N49' },
+      // {
+      //   run: () => this.mapquestService.scrapeMapQuest(`${name} ${location}`),
+      //   source: 'MapQuest',
+      // },
+      // {
+      //   run: () => this.opendiService.scrapeOpendi(name, location),
+      //   source: 'Opendi',
+      // },
+      // {
+      //   run: () =>
+      //     this.profileCanadaService.scrapeProfileCanada(name, location),
+      //   source: 'Profile Canada',
+      // },
+      // {
+      //   run: () => this.instagramService.scrapeInstagram(name),
+      //   source: 'Instagram',
+      // },
+      // {
+      //   run: () => this.wheretoScraperService.scrapeWhereTo(name, location),
+      //   source: 'WhereTo',
+      // },
       {
         run: () => this.hotfrogScraperService.scrapeHotfrog(name, location),
         source: 'Hotfrog',
       },
-      {
-        run: () => this.facebookScraperService.scrapeFacebook(name),
-        source: 'Facebook',
-      },
-      {
-        run: () => this.iGlobalScraperService.scrapeIGlobal(name),
-        source: 'IGlobal',
-      },
+      // {
+      //   run: () => this.facebookScraperService.scrapeFacebook(name),
+      //   source: 'Facebook',
+      // },
+      // {
+      //   run: () => this.iGlobalScraperService.scrapeIGlobal(name),
+      //   source: 'IGlobal',
+      // },
       {
         run: () => this.goLocalScraperService.scrapeGoLocal(name, location),
         source: 'GoLocal247',
@@ -366,43 +367,43 @@ export class ScraperService {
           ),
         source: 'MerchantCircle',
       },
-      {
-        run: () => this.infobelScraperService.scrapeInfobel(name, location),
-        source: 'Infobel',
-      },
-      {
-        run: () => this.acompioScraperService.scrapeAcompio(name, location),
-        source: 'Acompio',
-      },
-      {
-        run: () => this.appleMapsScraperService.scrapeAppleMaps(name, location),
-        source: 'Apple Maps',
-      },
-      {
-        run: () =>
-          this.openstreetmapScraperService.scrapeOpenStreetMap(name, location),
-        source: 'OpenStreetMap',
-      },
+      // {
+      //   run: () => this.infobelScraperService.scrapeInfobel(name, location),
+      //   source: 'Infobel',
+      // },
+      // {
+      //   run: () => this.acompioScraperService.scrapeAcompio(name, location),
+      //   source: 'Acompio',
+      // },
+      // {
+      //   run: () => this.appleMapsScraperService.scrapeAppleMaps(name, location),
+      //   source: 'Apple Maps',
+      // },
+      // {
+      //   run: () =>
+      //     this.openstreetmapScraperService.scrapeOpenStreetMap(name, location),
+      //   source: 'OpenStreetMap',
+      // },
       {
         run: () => this.kompassScraperService.scrapeKompass(name),
         source: 'Kompass',
       },
-      {
-        run: () => this.storeboardScraperService.scrapeStoreboard(name),
-        source: 'Storeboard',
-      },
-      {
-        run: () => this.zeemapsScraperService.scrapeZeemaps(name),
-        source: 'Zeemaps',
-      },
-      {
-        run: () => this.ibeginScraperService.scrapeIbegin(name, location),
-        source: 'iBegin',
-      },
-      {
-        run: () => this.bizpagesScraperService.scrapeBizpages(name, location),
-        source: 'Bizpages',
-      },
+      // {
+      //   run: () => this.storeboardScraperService.scrapeStoreboard(name),
+      //   source: 'Storeboard',
+      // },
+      // {
+      //   run: () => this.zeemapsScraperService.scrapeZeemaps(name),
+      //   source: 'Zeemaps',
+      // },
+      // {
+      //   run: () => this.ibeginScraperService.scrapeIbegin(name, location),
+      //   source: 'iBegin',
+      // },
+      // {
+      //   run: () => this.bizpagesScraperService.scrapeBizpages(name, location),
+      //   source: 'Bizpages',
+      // },
       // {
       //   run: () => this.brownbookScraperService.scrapeBrownbook(name),
       //   source: 'Brownbook',
