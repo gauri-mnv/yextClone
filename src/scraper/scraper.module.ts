@@ -19,6 +19,7 @@ import {
   ZeemapsScraperService,
   IbeginScraperService,
   BizpagesScraperService,
+  EnrollBusinessScraperService,
   //BrownbookScraperService,
 } from './multiService';
 import {
@@ -61,6 +62,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     ZeemapsScraperService,
     IbeginScraperService,
     BizpagesScraperService,
+    EnrollBusinessScraperService,
     //BrownbookScraperService,
     // CylexScraperService,
     InfobelScraperService,

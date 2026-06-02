@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
@@ -19,6 +18,8 @@ import {
   ZeemapsScraperService,
   IbeginScraperService,
   BizpagesScraperService,
+  EnrollBusinessScraperService,
+
   // BrownbookScraperService,
 } from './multiService';
 import {
@@ -61,6 +62,7 @@ export class ScraperService {
     private zeemapsScraperService: ZeemapsScraperService,
     private ibeginScraperService: IbeginScraperService,
     private bizpagesScraperService: BizpagesScraperService,
+    private enrollBusinessScraperService: EnrollBusinessScraperService,
 
     // private brownbookScraperService: BrownbookScraperService,
   ) {}
@@ -343,6 +345,15 @@ export class ScraperService {
       //   run: () => this.wheretoScraperService.scrapeWhereTo(name, location),
       //   source: 'WhereTo',
       // },
+      {
+        run: () =>
+          this.enrollBusinessScraperService.scrapeEnrollBusiness({
+            businessName: name,
+            category: 'Dental Clinic',
+            city: location,
+          }),
+        source: 'EnrollBusiness',
+      },
       {
         run: () => this.hotfrogScraperService.scrapeHotfrog(name, location),
         source: 'Hotfrog',

@@ -18,3 +18,4 @@ export * from './zeemapsScraper.service';
 export * from './IbeginScraper.service';
 export * from './bizpagesScraper.service';
 export * from './acompioScraper.service';
+export * from './enrollBusinessScraper.service';
