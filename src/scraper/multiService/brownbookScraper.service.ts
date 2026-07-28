@@ -80,7 +80,7 @@ export class BrownbookScraperService {
 
     try {
       browser = await chromium.launch({
-        headless: false,
+        headless: true,
         args: [
           '--disable-blink-features=AutomationControlled',
           '--start-maximized',

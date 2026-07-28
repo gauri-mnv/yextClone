@@ -33,7 +33,7 @@ export class EnrollBusinessScraperService {
     const searchPageUrl = 'https://ca.enrollbusiness.com/sbp?bsn=';
 
     const browser = await puppeteer.launch({
-      headless: false, // Switch to false here if you need to watch it step-by-step
+      headless: true, // Switch to false here if you need to watch it step-by-step
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',

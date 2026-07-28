@@ -18,7 +18,7 @@ export class BrownbookScraperService {
     location: string,
   ): Promise<LocationResponseDto[]> {
     const browser = await chromium.launch({
-      headless: false, // important for stability
+      headless: true, // important for stability
       slowMo: 100,
     });
 

@@ -1,0 +1,4 @@
+graph LR
+  AppModule --> TypeOrmModule
+  AppModule --> ScraperModule
+  ScraperModule --> TypeOrmModule

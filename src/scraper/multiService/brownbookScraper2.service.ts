@@ -19,7 +19,7 @@ export class BrownbookScraperService {
     location: string,
   ): Promise<LocationResponseDto[]> {
     const browser = await chromium.launch({
-      headless: false,
+      headless: true,
       args: [
         '--disable-blink-features=AutomationControlled',
         '--window-size=1920,1080',
@@ -27,7 +27,7 @@ export class BrownbookScraperService {
     });
     const userDataDir = './brownbook_session';
     const context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
+      headless: true,
       args: ['--disable-blink-features=AutomationControlled'],
     });
     const page = await context.newPage();
